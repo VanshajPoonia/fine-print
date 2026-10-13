@@ -1,0 +1,17 @@
+{
+  "name": "fine-print",
+  "version": "1.0.0",
+  "description": "Finds the clauses in a freelance contract that cost you money, with EmbeddingGemma running in your browser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "train": "node scripts/train.mjs",
+    "sample": "node scripts/sample.mjs",
+    "test": "node tests/unit.mjs && node tests/eval.mjs"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "4.3.1"
+  },
+  "license": "MIT"
+}

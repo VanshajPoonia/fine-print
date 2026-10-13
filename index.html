@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fine Print</title>
+  <meta name="description" content="Finds the clauses in a freelance contract that cost you money: non-competes, IP grabs, uncapped liability, net-90 payment. An open model reads it in your browser; nothing is uploaded.">
+  <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script type="module" src="src/app.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="kicker">Fine Print</p>
+      <h1>Find the clauses that cost you money, <em>before</em> you sign.</h1>
+      <p class="lede">Paste a client contract or drop in the PDF. A small AI model running in this tab reads every clause and marks the ones freelancers regret: non-competes, IP grabs, no cap on what you could owe, getting paid in 90 days. For each one you get what it means and what to ask for instead.</p>
+      <p class="promise"><span aria-hidden="true">🔒</span> The contract never leaves this device. There is no server to send it to.</p>
+    </header>
+
+    <section class="input card" aria-label="Your contract">
+      <div class="samples">
+        <span class="small">Try one:</span>
+        <button class="chip" data-sample="freelance">A freelance design contract</button>
+        <button class="chip" data-sample="cuad">A real contract, with the lawyers' answers</button>
+      </div>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept=".pdf,.docx,.txt,.md,text/plain,application/pdf">
+        <span><strong>Drop a PDF, DOCX or text file</strong> or click to choose one</span>
+      </label>
+      <textarea id="text" spellcheck="false" placeholder="…or paste the contract text here."></textarea>
+      <div class="go">
+        <button id="scan" class="primary" disabled>Read it for me</button>
+        <p id="status" class="status small" aria-live="polite"></p>
+      </div>
+      <progress id="bar" max="1" value="0" hidden></progress>
+      <p class="small">The reader is <strong>EmbeddingGemma</strong>, Google's open-weight model, with a small classifier on top trained on 350 real contracts that lawyers had marked up. The first scan downloads it, <span id="size">197 MB</span>, once.</p>
+    </section>
+
+    <section id="report" class="report" hidden aria-live="polite">
+      <div class="report-head">
+        <div>
+          <p class="kicker">What we found</p>
+          <h2 id="headline"></h2>
+          <p id="counts" class="counts"></p>
+        </div>
+        <button id="reply" class="secondary">Draft my reply</button>
+      </div>
+      <div id="lawyers" class="lawyers" hidden></div>
+      <ol id="flags" class="flags"></ol>
+      <details class="contract" id="contract-wrap">
+        <summary>Read the whole contract, marked up</summary>
+        <div id="contract" class="contract-text"></div>
+      </details>
+    </section>
+
+    <dialog id="reply-dialog">
+      <form method="dialog">
+        <h2>Your reply</h2>
+        <p class="small">A starting point, built from the clauses you kept ticked. Edit it before you send it.</p>
+        <textarea id="reply-text"></textarea>
+        <div class="dialog-actions">
+          <button id="copy" type="button" class="primary">Copy</button>
+          <button value="close">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer>
+      <p><strong>Not legal advice.</strong> Fine Print points at clauses worth a second look; it can miss things and it can be wrong. For a contract that matters, a lawyer is still the right call. It just helps to know what to ask them.</p>
+      <p>Trained and tested on <a href="https://www.atticusprojectai.org/cuad">CUAD</a> by The Atticus Project (CC BY 4.0). Model: <a href="https://huggingface.co/google/embeddinggemma-300m">EmbeddingGemma</a>, under the <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>. <a href="https://github.com/VanshajPoonia/fine-print">Source</a>, MIT.</p>
+    </footer>
+  </main>
+</body>
+</html>

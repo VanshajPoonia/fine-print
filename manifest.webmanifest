@@ -1,0 +1,10 @@
+{
+  "name": "Fine Print",
+  "short_name": "Fine Print",
+  "description": "Finds the clauses in a freelance contract that cost you money, on your own device.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f4ec",
+  "theme_color": "#1d1f24",
+  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
