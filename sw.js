@@ -1,7 +1,7 @@
 // Offline support. Once the model is cached (transformers.js keeps it in Cache Storage),
 // Fine Print works with no connection at all, which is also the simplest proof that the
 // contract never goes anywhere.
-const SHELL = 'fp-shell-v1';
+const SHELL = 'fp-shell-v2';
 const RUNTIME = 'fp-runtime-v1';
 const FILES = [
   './', 'index.html', 'assets/styles.css', 'assets/icon.svg', 'manifest.webmanifest',
@@ -21,6 +21,17 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// GitHub Pages cannot send the cross-origin isolation headers that let the models use
+// several CPU threads, so this worker adds them to every page and script it serves.
+// (On a host that can send headers, vercel.json does the same job.)
+function isolate(res) {
+  if (!res || res.type === 'opaque' || res.status === 0) return res;
+  const headers = new Headers(res.headers);
+  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
@@ -38,9 +49,10 @@ self.addEventListener('fetch', (e) => {
     try {
       const res = await fetch(e.request);
       if (res.ok) cache.put(e.request, res.clone());
-      return res;
+      return sameOrigin ? isolate(res) : res;
     } catch {
-      return (await cache.match(e.request, { ignoreSearch: true })) || (await caches.match('index.html'));
+      const hit = (await cache.match(e.request, { ignoreSearch: true })) || (await caches.match('index.html'));
+      return sameOrigin ? isolate(hit) : hit;
     }
   })());
 });

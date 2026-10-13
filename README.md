@@ -4,7 +4,7 @@ Finds the clauses in a client contract that cost freelancers money, before you s
 
 Paste the contract or drop in the PDF. **EmbeddingGemma**, Google's open-weight embedding model, reads every clause in your browser, and a small classifier trained on 350 contracts that lawyers had marked up flags the ones to worry about: non-competes, IP grabs, no cap on what you could owe, penalties, auto-renewal, cancel-at-any-time and more. Each flag comes with what it means and what to ask for instead, and **Draft my reply** turns the ones you tick into an email to the client.
 
-**Live:** https://fine-print-contracts.vercel.app · mirror: https://vanshajpoonia.github.io/fine-print/
+**Live:** https://vanshajpoonia.github.io/fine-print/
 
 <img src="docs/flags.png" alt="Fine Print's report on a freelance design contract: red flags first, each with the clause, what it means and what to ask for" width="560">
 
