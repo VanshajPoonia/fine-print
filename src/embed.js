@@ -6,8 +6,13 @@ export const MODELS = {
   // What ships. EmbeddingGemma's ONNX export ends in its own pooling and projection layers
   // and returns a normalised `sentence_embedding`, so it is called as a model, not through
   // the feature-extraction pipeline (which would mean-pool raw hidden states instead).
+  // The 4-bit build is what the tests measure and what runs on WebGPU. Its quantised token
+  // lookup (GatherBlockQuantized) is missing from the browser's WASM runtime, so browsers
+  // without WebGPU load the "no_gather" 4-bit build instead, which keeps that table
+  // unquantised. scripts/fallback.mjs measures how often the two agree.
   gemma: {
     id: 'onnx-community/embeddinggemma-300m-ONNX',
+    wasmFile: 'model_no_gather',
     dtype: 'q4',
     prefix: 'task: classification | query: ',
     dims: 768,
@@ -30,10 +35,11 @@ const BATCH = 16;
  * @param {'gemma'|'bge'} key
  * @returns {Promise<(texts: string[], onBatch?: (done:number)=>void) => Promise<Float32Array[]>>}
  */
-export async function embedder(tf, key, { device, progress_callback } = {}) {
+export async function embedder(tf, key, { device, file, progress_callback } = {}) {
   const m = MODELS[key];
+  const model_file_name = file ?? (device === 'wasm' ? m.wasmFile : undefined);
   const tokenizer = await tf.AutoTokenizer.from_pretrained(m.id, { progress_callback });
-  const model = await tf.AutoModel.from_pretrained(m.id, { dtype: m.dtype, device, progress_callback });
+  const model = await tf.AutoModel.from_pretrained(m.id, { dtype: m.dtype, model_file_name, device, progress_callback });
 
   return async (texts, onBatch) => {
     // Batches of similar length waste far less work on padding: about twice as fast on a

@@ -16,6 +16,8 @@ It is also what makes this a viable one-person business. A tool that never recei
 
 ## How it works
 
+<img src="docs/how-it-works.png" alt="How Fine Print reads a contract" width="640">
+
 ```
 contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in the browser) ──► 768 numbers per clause
                                 src/segment.js   src/embed.js                              │
@@ -32,6 +34,7 @@ contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in t
 - **The model finds; people wrote the advice.** Nothing a freelancer reads is generated. A small model explaining a legal clause in its own words is exactly where you do not want invention, so the AI's only job is deciding which clauses to show you, and that job can be measured.
 - **Segmentation** (`src/segment.js`) has to handle two very different inputs: real documents with hard-wrapped lines, and CUAD, where every contract is one long line with all whitespace collapsed. It splits on sentences and numbered clauses, keeps headings ("Non-Competition.") attached to their clause, and keeps offsets so the app can highlight the exact text.
 - **The classifiers** are one logistic regression per flag on top of the embeddings, trained in plain JavaScript (`scripts/linear.mjs`), with each threshold chosen on validation contracts. In the browser, scoring a clause is 14 dot products.
+- **Two builds of the same model.** On WebGPU the browser runs exactly the 4-bit file the tests measure. That file's quantised token lookup is missing from the browser's WASM runtime, so browsers without WebGPU load a sibling 4-bit build that keeps the lookup table unquantised. `node scripts/fallback.mjs` compares them on 2,936 test clauses: mean cosine between their vectors 0.9955, and **36 of 41,104 flag decisions differ (0.09%)**; the fallback raises slightly fewer flags (653 against 673).
 
 ## Data
 
@@ -46,6 +49,7 @@ contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in t
 | Ctrl+F (hand-written keyword patterns) | 49% | 29% | 10.5 | 71% / 70% |
 | Zero-shot (similarity to a one-line description) | 38% | 7% | 44.3 | 69% / 56% |
 | **Trained heads on EmbeddingGemma (shipped)** | **66%** | **56%** | **4.6** | **83% / 78%** |
+| Same training on bge-small (a sixth of the size) | 60% | 48% | 5.5 | 81% / 74% |
 
 "Contracts: found / right" is the question a freelancer actually asks: does this contract have a non-compete? Of contracts where the lawyers marked one, how often Fine Print says so, and when it says so, how often it is right.
 
@@ -72,6 +76,7 @@ What the table teaches:
 
 - **Zero-shot is not a shortcut.** Describing a non-compete in one sentence and looking for similar clauses finds some, and drowns them in 44 false alarms per contract: to an embedding model, all legalese is similar to all other legalese.
 - **Ctrl+F is a real baseline.** "governed by" finds governing law clauses fine. It falls apart on anything said in more than one way: a covenant not to sue is "shall not challenge", "shall not contest", "will not attack".
+- **The bigger model earned its place where it matters most.** With identical training, bge-small (a sixth of the size) found 60% of clauses against EmbeddingGemma's 66%, but only 44% of non-compete clauses against 70%.
 - **It is weakest on penalties and IP**, partly because CUAD's categories are broader than a freelancer's worry: its "IP ownership assignment" includes transferring domain names between companies.
 
 ### Not every false alarm is false
@@ -105,11 +110,13 @@ src/scan.js        clauses -> flags
 src/flags.js       the 14 flags: which CUAD categories, what it means, what to ask for, reply line
 src/rules.js       the 3 pattern checks
 src/extract.js     PDF and DOCX to text, in the browser
-src/model.js       EmbeddingGemma in the browser (WebGPU, or WASM)
+src/model.js       EmbeddingGemma in the browser (WebGPU, or WASM with the fallback build)
 src/app.js         UI
 scripts/data.mjs   CUAD -> labelled clauses
 scripts/train.mjs  fits the heads, chooses thresholds
 scripts/measure.mjs  the scoring every approach shares
+scripts/audit.mjs  prints 40 random false alarms to read
+scripts/fallback.mjs  how often the no-WebGPU build agrees with the measured one
 tests/unit.mjs     segmenter and rules, no model
 tests/eval.mjs     the evaluation
 data/heads.json    the trained heads

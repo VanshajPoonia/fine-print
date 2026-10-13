@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { segment, matches } from '../src/segment.js';
 import { FLAGS } from '../src/flags.js';
+import { MODELS } from '../src/embed.js';
 
 export const CACHE = new URL('../tests/.cache/', import.meta.url);
 const DIR = new URL('cuad/', CACHE);
@@ -69,9 +70,11 @@ export function pieces(list, { keepNegatives = 1 } = {}) {
 
 /** Embeds `texts` once per model and keeps the result in tests/.cache. */
 export async function embedCached(name, key, texts, embed) {
-  const file = new URL(`emb-${key}-${name}.bin`, CACHE);
+  const m = MODELS[key];
+  const tag = `${key}-${m.file ?? 'model'}-${m.dtype}`; // vectors from another build of the model never match
+  const file = new URL(`emb-${tag}-${name}.bin`, CACHE);
   const sig = hash(texts.join('\u0000')).toString(16);
-  const meta = new URL(`emb-${key}-${name}.json`, CACHE);
+  const meta = new URL(`emb-${tag}-${name}.json`, CACHE);
   if (existsSync(file) && existsSync(meta) && JSON.parse(readFileSync(meta)).sig === sig) {
     const buf = readFileSync(file);
     const all = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
