@@ -1,6 +1,6 @@
 {
-  "name": "Fine Print",
-  "short_name": "Fine Print",
+  "name": "ClauseGuard: Freelance Contract Red-Flag Finder",
+  "short_name": "ClauseGuard",
   "description": "Finds the clauses in a freelance contract that cost you money, on your own device.",
   "start_url": "./",
   "display": "standalone",

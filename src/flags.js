@@ -1,4 +1,4 @@
-// What Fine Print looks for, and what it tells you when it finds one.
+// What ClauseGuard looks for, and what it tells you when it finds one.
 //
 // The model's only job is to find the clause. Everything a freelancer reads after that
 // (what it means, why it matters, what to ask for) is written here by a person, so it

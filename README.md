@@ -1,4 +1,6 @@
-# Fine Print 🔍
+# ClauseGuard 🔍
+
+**Freelance Contract Red-Flag Finder.** Formerly called Fine Print.
 
 Finds the clauses in a client contract that cost freelancers money, before you sign it.
 
@@ -6,17 +8,17 @@ Paste the contract or drop in the PDF. **EmbeddingGemma**, Google's open-weight 
 
 **Live:** https://vanshajpoonia.github.io/fine-print/
 
-<img src="docs/flags.png" alt="Fine Print's report on a freelance design contract: red flags first, each with the clause, what it means and what to ask for" width="560">
+<img src="docs/flags.png" alt="ClauseGuard's report on a freelance design contract: red flags first, each with the clause, what it means and what to ask for" width="560">
 
 ## Why it runs on your device
 
-Client contracts are confidential, often explicitly. Many say so in their own confidentiality clause, and pasting one into a hosted AI service means handing it to a third party. Fine Print never has the contract: the model is a file your browser downloads once, and the text never leaves the tab. Open the network tab and check.
+Client contracts are confidential, often explicitly. Many say so in their own confidentiality clause, and pasting one into a hosted AI service means handing it to a third party. ClauseGuard never has the contract: the model is a file your browser downloads once, and the text never leaves the tab. Open the network tab and check.
 
 It is also what makes this a viable one-person business. A tool that never receives its customers' contracts has nothing to leak, nothing to secure, and no per-scan cost, so it can be priced like a tool rather than like a lawyer.
 
 ## How it works
 
-<img src="docs/how-it-works.png" alt="How Fine Print reads a contract" width="640">
+<img src="docs/how-it-works.png" alt="How ClauseGuard reads a contract" width="640">
 
 ```
 contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in the browser) ──► 768 numbers per clause
@@ -38,7 +40,7 @@ contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in t
 
 ## Data
 
-[CUAD](https://www.atticusprojectai.org/cuad) (Contract Understanding Atticus Dataset, The Atticus Project, CC BY 4.0) is 510 real commercial contracts from SEC filings, with clauses in 41 categories highlighted by lawyers and law students. Fine Print's 14 flags use 16 of those categories (`src/flags.js` lists which). CUAD's official split is used as is: the 408 training contracts are split again into 350 to fit on and 58 to choose thresholds on, and the **102 test contracts are only used to test**.
+[CUAD](https://www.atticusprojectai.org/cuad) (Contract Understanding Atticus Dataset, The Atticus Project, CC BY 4.0) is 510 real commercial contracts from SEC filings, with clauses in 41 categories highlighted by lawyers and law students. ClauseGuard's 14 flags use 16 of those categories (`src/flags.js` lists which). CUAD's official split is used as is: the 408 training contracts are split again into 350 to fit on and 58 to choose thresholds on, and the **102 test contracts are only used to test**.
 
 ## Measured
 
@@ -51,7 +53,7 @@ contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in t
 | **Trained heads on EmbeddingGemma (shipped)** | **66%** | **56%** | **4.6** | **83% / 78%** |
 | Same training on bge-small (a sixth of the size) | 60% | 48% | 5.5 | 81% / 74% |
 
-"Contracts: found / right" is the question a freelancer actually asks: does this contract have a non-compete? Of contracts where the lawyers marked one, how often Fine Print says so, and when it says so, how often it is right.
+"Contracts: found / right" is the question a freelancer actually asks: does this contract have a non-compete? Of contracts where the lawyers marked one, how often ClauseGuard says so, and when it says so, how often it is right.
 
 By flag (shipped):
 
@@ -85,7 +87,7 @@ CUAD's annotators often highlight one instance of a clause per contract, so some
 
 ## Limits
 
-- Scanned PDFs are pictures of text; Fine Print cannot read them (yet).
+- Scanned PDFs are pictures of text; ClauseGuard cannot read them (yet).
 - English only. CUAD is US commercial contracts; a freelance contract under another country's law may phrase things differently.
 - It points at clauses. It does not know your situation, and it can miss things. **Not legal advice.**
 

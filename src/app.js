@@ -36,7 +36,7 @@ document.querySelectorAll('[data-sample]').forEach((b) => b.addEventListener('cl
     lawyer = c.lawyer;
     lawyerText = c.text;
     setText(c.text);
-    $('#status').textContent = `${c.name}: a real agreement from an SEC filing, one of the 102 contracts held back from training. Lawyers' answers will be shown next to Fine Print's.`;
+    $('#status').textContent = `${c.name}: a real agreement from an SEC filing, one of the 102 contracts held back from training. Lawyers' answers will be shown next to ClauseGuard's.`;
   }
 }));
 
@@ -50,7 +50,7 @@ async function readFile(file) {
   $('#status').textContent = `Reading ${file.name}…`;
   try {
     const t = await fileToText(file);
-    if (!t.trim()) throw new Error('No text found. If it is a scanned PDF, it is a picture of text, and Fine Print cannot read pictures yet.');
+    if (!t.trim()) throw new Error('No text found. If it is a scanned PDF, it is a picture of text, and ClauseGuard cannot read pictures yet.');
     setText(t);
     document.querySelectorAll('[data-sample]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
     $('#status').textContent = `${file.name}: ${t.split(/\s+/).length.toLocaleString()} words, read on this device.`;
@@ -117,7 +117,7 @@ function render(text, { segs, hits }, lawyerMarks) {
     const name = (f) => BY_ID[f].title.toLowerCase();
     $('#lawyers').innerHTML = `
       <h3>Against the lawyers' answers</h3>
-      <p>In this contract, CUAD's lawyers marked clauses in <strong>${lawyerFlags.length}</strong> of Fine Print's categories. Fine Print found <strong>${both.length}</strong> of them.</p>
+      <p>In this contract, CUAD's lawyers marked clauses in <strong>${lawyerFlags.length}</strong> of ClauseGuard's categories. ClauseGuard found <strong>${both.length}</strong> of them.</p>
       <ul>
         ${missed.length ? `<li>Missed: ${missed.map(name).join('; ')}.</li>` : ''}
         ${extra.length ? `<li>Flagged, but the lawyers did not mark: ${extra.map(name).join('; ')}.</li>` : ''}
@@ -150,7 +150,7 @@ function render(text, { segs, hits }, lawyerMarks) {
         ${more ? `<span>and ${more} more place${more > 1 ? 's' : ''}</span>` : ''}
       </div>
     </li>`;
-  }).join('') : '<li class="empty">Fine Print did not flag anything. That is not the same as "safe": read it anyway, and check the payment terms yourself.</li>';
+  }).join('') : '<li class="empty">ClauseGuard did not flag anything. That is not the same as "safe": read it anyway, and check the payment terms yourself.</li>';
 
   // The marked-up contract.
   const level = new Map();

@@ -1,5 +1,5 @@
 // Offline support. Once the model is cached (transformers.js keeps it in Cache Storage),
-// Fine Print works with no connection at all, which is also the simplest proof that the
+// ClauseGuard works with no connection at all, which is also the simplest proof that the
 // contract never goes anywhere.
 const SHELL = 'fp-shell-v2';
 const RUNTIME = 'fp-runtime-v1';
