@@ -21,16 +21,28 @@ const each = (segs, test) => segs.flatMap((s, i) => {
 
 const PAYS = /\b(?:invoice[sd]?|fees?|payments?|pay|paid|payable|compensation|remuneration)\b/i;
 const MONEY = /(?:[$€£₹]\s?\d|\b(?:USD|EUR|GBP|INR|US\$)\s?\d|\d[\d,.]*\s?(?:dollars|euros?|pounds|rupees|USD|EUR|GBP|INR)\b)/i;
+const PAYING = /\b(?:shall|will|must|agrees?\s+to)\s+(?:\w+\s+)?(?:pay|settle)\b|\b(?:payable|paid|due|remit|remits|receive|receives)\b|\bpayment\s+(?:of|for|is|will|shall)\b/i;
 const CURRENCY = /[$€£₹]|\b(?:USD|EUR|GBP|INR|CAD|AUD|SGD|CHF|AED|dollars?|euros?|pounds?\s+sterling|rupees?|sterling)\b/i;
 const FEE = '(?:(?:bank|wire|transfer|transaction|remittance|conversion|currency|platform|paypal|payment|processing|intermediary|swift|foreign\\s+exchange)\\s+(?:or\\s+|and\\s+|\\/\\s*)?)+(?:charges?|fees?|costs?)\\b';
-const DEADLINE = /\bnet\s*\(?\d{1,3}\)?(?!\s*%)|\bwithin\s+[^.;]{0,40}?\b(?:days?|weeks?|months?)\b|\b\d{1,3}\)?\s+(?:calendar\s+|business\s+)?days\s+(?:of|after|from|following)\b|\b(?:due|payable|paid)\s+(?:up)?on\s+receipt\b|\b(?:in\s+advance|before\s+work\s+(?:starts|begins))\b/i;
+const DEADLINE = /\bnet\s*\(?\d{1,3}\)?(?!\s*%)|\bwithin\s+[^.;]{0,40}?\b(?:days?|weeks?|months?)\b|\b\d{1,3}\)?\s+(?:calendar\s+|business\s+)?days\s+(?:of|after|from|following)\b|\b(?:due|payable|paid)\s+(?:up)?on\s+receipt\b|\b(?:in\s+advance|before\s+work\s+(?:starts|begins))\b|\b(?:on\s+or\s+before|no\s+later\s+than|not\s+later\s+than)\b|\bby\s+the\s+\d{1,2}(?:st|nd|rd|th)\b|\bprior\s+to\s+the\s+\w+\s+(?:business\s+|calendar\s+)?day\b|\b(?:payable|due|paid)\s+within\b|\bwithin\s+\[/i;
 const LATE = /\blate\s+(?:payment\s+)?(?:fees?|charges?|interest)|\binterest\b[^.;]{0,80}\b(?:overdue|late|past\s+due|unpaid|outstanding)|\b(?:overdue|late|past\s+due|unpaid|outstanding)\b[^.;]{0,80}\b(?:interest|late\s+fee|surcharge)|\b(?:service|finance)\s+charge|\b(?:suspend|stop|pause)\s+(?:work|the\s+services|services|performance)/i;
 
 // Where the payment terms are, so absence checks have a clause to point at.
-const paymentClause = (segs) => segs.find((s) => PAYS.test(s.text) && DEADLINE.test(s.text))
-  ?? segs.find((s) => /\binvoice/i.test(s.text) && PAYS.test(s.text))
-  ?? segs.find((s) => PAYS.test(s.text) && MONEY.test(s.text))
-  ?? segs.find((s) => PAYS.test(s.text));
+// Scored, so the card quotes a clause about paying fees, not a definition, a table of contents
+// or a penalty. No clause scores high enough: nothing to point at, so no flag.
+function paymentClause(segs, needDeadline = false) {
+  let best = null, top = 0;
+  for (const s of segs) {
+    const t = s.text;
+    if (!PAYS.test(t) || !PAYING.test(t) || (needDeadline && !DEADLINE.test(t))) continue;
+    const score = (/\b(?:payments?|fees?|compensation|remuneration|rates?)\b/i.test(t) ? 1 : 0) + (/\binvoice/i.test(t) ? 3 : 0) + (MONEY.test(t) ? 2 : 0) + (/\b(?:shall|will|agrees?\s+to)\s+pay\b|\bpayable\b/i.test(t) ? 2 : 0) + (DEADLINE.test(t) ? 1 : 0)
+      - (/["”]\s*(?:shall\s+)?means?\b|\.{5,}/.test(t) ? 6 : 0)
+      - (/\b(?:indemnif\w*|damages|award|penalt\w*|liquidated|cancellation\s+fee|termination\s+fee|refund|reimburse\w*)\b/i.test(t) ? 4 : 0)
+      - (/\b(?:tax(?:es)?|expenses|freight|costs)\b/i.test(t) ? 3 : 0);
+    if (score > top) { best = s; top = score; }
+  }
+  return best;
+}
 
 const at = (s, extra = {}) => (s ? [{ start: s.start, end: s.end, ...extra }] : []);
 
@@ -82,8 +94,7 @@ export const PACK = [
     why: 'Working across borders, a late invoice is hard for me to chase, so I ask every client for a simple late-payment term.',
     find(text, segs) {
       if (LATE.test(text)) return [];
-      const s = segs.find((x) => PAYS.test(x.text) && DEADLINE.test(x.text));
-      return at(s, { note: 'no late fee' });
+      return at(paymentClause(segs, true), { note: 'no late fee' });
     },
   },
   {
