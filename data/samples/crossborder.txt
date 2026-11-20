@@ -1,0 +1,54 @@
+SOFTWARE DEVELOPMENT SERVICES AGREEMENT
+
+This Software Development Services Agreement (the "Agreement") is made on September 8, 2026 between Northwind Labs, Inc., a Delaware corporation with offices in San Francisco, California (the "Client"), and Priya Raman, an individual resident in Pune, India (the "Developer").
+
+1. Services
+
+1.1 The Developer will design and build the mobile app described in Exhibit A (the "App"), including its source code, designs and documentation (together, the "Deliverables").
+
+1.2 The Developer will work in two-week sprints and will demo each sprint to the Client by video call.
+
+2. Fees and Payment
+
+2.1 The Client will pay the Developer a fixed fee of $18,000 for the Services, in three milestones of $6,000 each, as set out in Exhibit A.
+
+2.2 The Developer will invoice the Client at each milestone. The Client will pay each undisputed invoice within thirty (30) days after it receives payment from its customer for the corresponding phase of the App.
+
+2.3 The Client shall retain ten percent (10%) of each milestone payment, to be released after the App has been live for six months without major defects.
+
+2.4 All bank charges, transfer fees and currency conversion costs shall be borne by the Developer. The Client may deduct any withholding taxes required by law from payments to the Developer.
+
+3. Ownership
+
+3.1 All Deliverables are works made for hire for the Client. To the extent any Deliverable is not a work made for hire, the Developer hereby assigns to the Client all right, title and interest in it, effective upon creation.
+
+3.2 The Developer will not reuse any component of the Deliverables in work for other clients.
+
+4. Non-Competition
+
+4.1 During the term of this Agreement and for twelve (12) months after its termination, the Developer shall not provide software development services to any business that offers a fitness or wellness app, anywhere in the world.
+
+5. Term and Termination
+
+5.1 This Agreement starts on the date above and ends when all Deliverables have been accepted.
+
+5.2 The Client may terminate this Agreement at any time on seven (7) days' written notice. On termination, the Client will pay only for Deliverables it has accepted in writing before the termination date, and no further amounts shall be payable to the Developer.
+
+6. Confidentiality
+
+6.1 The Developer will keep the Client's business information confidential during the term and for three (3) years afterwards.
+
+7. Disputes
+
+7.1 This Agreement is governed by the laws of the State of California. Any dispute arising out of or relating to this Agreement shall be resolved by binding arbitration administered by the American Arbitration Association in San Francisco, California, and judgment on the award may be entered in any court having jurisdiction.
+
+8. General
+
+8.1 This Agreement is the entire agreement between the parties and may be amended only in writing signed by both of them.
+
+8.2 Notices may be sent by email to the addresses the parties use for the project.
+
+NORTHWIND LABS, INC.                    DEVELOPER
+By: ____________________               ____________________
+Name: Marcus Hale                        Priya Raman
+Title: Head of Product

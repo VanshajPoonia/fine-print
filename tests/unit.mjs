@@ -1,8 +1,9 @@
 // Fast checks with no model: the segmenter and the rule-based flags.
 import { readFileSync } from 'node:fs';
 import { segment, matches } from '../src/segment.js';
-import { RULES_BY_ID } from '../src/rules.js';
-import { ruleHits } from '../src/scan.js';
+import { RULES, RULES_BY_ID } from '../src/rules.js';
+import { PACK } from '../src/crossborder.js';
+import { ruleHits, supersede, rulesFor, withRules } from '../src/scan.js';
 
 let failed = 0;
 const check = (name, ok, detail = '') => {
@@ -63,6 +64,23 @@ const sample = readFileSync(new URL('../data/samples/freelance.txt', import.meta
 const found = new Set(ids(sample).map((x) => x.split(':')[0]));
 check('the sample contract trips all three rules', ['slowpay', 'satisfaction', 'revisions'].every((r) => found.has(r)), [...found].join(', '));
 check('every rule has advice to show', Object.values(RULES_BY_ID).every((r) => r.means && r.ask && r.title));
+
+// --- cross-border pack ----------------------------------------------------------------
+
+check('cross-border rules run only when asked for', rulesFor().length === RULES.length && rulesFor({ crossBorder: true }).length === RULES.length + PACK.length);
+{
+  const hits = [{ seg: 1, flag: 'noncompete', p: 0.9 }, { seg: 4, flag: 'noncompete', p: 0.8 }, { seg: 1, flag: 'scope', rule: true }];
+  const kept = supersede(hits, rulesFor({ crossBorder: true })).map((h) => `${h.seg}:${h.flag}`);
+  check('a narrower rule replaces the model flag on the same clause only', kept.join() === '4:noncompete,1:scope', kept.join());
+}
+{
+  const xb = readFileSync(new URL('../data/samples/crossborder.txt', import.meta.url), 'utf8');
+  const segs = segment(xb);
+  const on = new Set(withRules(xb, segs, [], { crossBorder: true }).map((h) => h.flag));
+  const off = new Set(withRules(xb, segs, [], { crossBorder: false }).map((h) => h.flag));
+  check('the cross-border sample trips the pack when it is on', ['ipearly', 'forum', 'realise', 'scope', 'killfee'].every((f) => on.has(f)), [...on].join(', '));
+  check('and none of it when it is off', PACK.every((r) => !off.has(r.id)), [...off].join(', '));
+}
 
 console.log(failed ? `\n${failed} FAILED` : '\nall unit checks pass');
 process.exit(failed ? 1 : 0);

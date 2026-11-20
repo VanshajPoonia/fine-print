@@ -8,7 +8,7 @@
     "start": "python3 -m http.server 8000",
     "train": "node scripts/train.mjs",
     "sample": "node scripts/sample.mjs",
-    "test": "node tests/unit.mjs && node tests/eval.mjs"
+    "test": "node tests/unit.mjs && node tests/crossborder.mjs && node tests/eval.mjs"
   },
   "devDependencies": {
     "@huggingface/transformers": "4.3.1"

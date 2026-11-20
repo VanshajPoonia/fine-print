@@ -4,6 +4,7 @@
 import { segment } from './segment.js';
 import { FLAGS, LEVELS } from './flags.js';
 import { RULES } from './rules.js';
+import { PACK } from './crossborder.js';
 
 export function predict(w, b, x) {
   let z = b;
@@ -28,10 +29,10 @@ export function hitsFor(vecs, heads) {
 }
 
 /** Rule matches, attached to the clause they fall in. */
-export function ruleHits(text, segs) {
+export function ruleHits(text, segs, rules = RULES) {
   const out = [];
-  for (const r of RULES) {
-    for (const m of r.find(text)) {
+  for (const r of rules) {
+    for (const m of r.find(text, segs)) {
       const i = segs.findIndex((s) => m.start < s.end && m.end > s.start);
       if (i !== -1 && !out.some((h) => h.seg === i && h.flag === r.id)) out.push({ seg: i, flag: r.id, rule: true, note: m.note });
     }
@@ -39,14 +40,31 @@ export function ruleHits(text, segs) {
   return out;
 }
 
+/** A narrower cross-border rule replaces the broader flag it `supersedes` on the same clause. */
+export function supersede(hits, rules) {
+  const by = Object.fromEntries(rules.map((r) => [r.id, r]));
+  const drop = new Set(hits.flatMap((h) => (by[h.flag]?.supersedes ?? []).map((f) => `${h.seg}:${f}`)));
+  return hits.filter((h) => !drop.has(`${h.seg}:${h.flag}`));
+}
+
+/** The rules to run: the general three, plus the cross-border pack when asked for. */
+export const rulesFor = ({ crossBorder = false } = {}) => (crossBorder ? [...RULES, ...PACK] : RULES);
+
 /**
  * @param {string} text
  * @param {(texts:string[], onBatch?:(n:number)=>void)=>Promise<Float32Array[]>} embed
  */
-export async function scan(text, embed, heads, onProgress) {
+export async function scan(text, embed, heads, onProgress, options) {
   const segs = segment(text);
   const vecs = await embed(segs.map((s) => s.text), (n) => onProgress?.(n / segs.length));
-  return { segs, hits: [...hitsFor(vecs, heads), ...ruleHits(text, segs)] };
+  const model = hitsFor(vecs, heads);
+  return { segs, model, hits: withRules(text, segs, model, options) };
+}
+
+/** The model's hits plus the rules', with no need to embed the contract again. */
+export function withRules(text, segs, model, options) {
+  const rules = rulesFor(options);
+  return supersede([...model, ...ruleHits(text, segs, rules)], rules);
 }
 
 export const levelOrder = (level) => LEVELS[level].order;
