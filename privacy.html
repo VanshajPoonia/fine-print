@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClauseGuard privacy</title>
+  <meta name="description" content="What ClauseGuard and its browser extension do with your contract: nothing leaves your device.">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="kicker"><a href="./">ClauseGuard</a></p>
+      <h1>Privacy</h1>
+      <p class="lede">Short version: your contract stays on your device. There is no ClauseGuard server, no account and no analytics.</p>
+    </header>
+
+    <section class="card">
+      <h2>The web app</h2>
+      <p>The contract you paste or drop in is read by a model that runs in your browser tab. Your browser downloads the model once from Hugging Face and the app's code from GitHub Pages and jsDelivr. The contract itself is never sent anywhere. Two small settings are kept in your browser: whether the cross-border checks are on, and a flag used once to reload the page.</p>
+
+      <h2>The browser extension</h2>
+      <p>The extension does nothing until you click its button. Then it reads the contract on the tab you are looking at:</p>
+      <ul>
+        <li>On Google Docs, it asks Google Docs for the document's plain text, the same file its own Download as text gives you, using your existing sign-in.</li>
+        <li>On DocuSign, it reads the page pictures the viewer has already loaded.</li>
+        <li>On other pages, it reads the text you selected, or the page's visible text.</li>
+      </ul>
+      <p>It keeps that in Chrome's session memory (<code>chrome.storage.session</code>), which is never synced and is cleared when Chrome closes, and opens ClauseGuard in a new tab, where a small script on ClauseGuard's own page passes it in. Nothing is sent to ClauseGuard or to anyone else.</p>
+      <p>Permissions: <strong>activeTab</strong> and <strong>scripting</strong> let it read the tab you clicked on, only when you click. <strong>storage</strong> holds the contract in session memory until ClauseGuard's page picks it up. It has no access to any other site.</p>
+
+      <h2>Not legal advice</h2>
+      <p>ClauseGuard points at clauses worth a second look and suggests wording. It can miss things and it can be wrong. For a contract that matters, ask a lawyer.</p>
+
+      <p class="small">Source code: <a href="https://github.com/VanshajPoonia/fine-print">github.com/VanshajPoonia/fine-print</a>. Questions: open an issue there.</p>
+    </section>
+  </main>
+</body>
+</html>

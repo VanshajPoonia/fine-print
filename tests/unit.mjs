@@ -1,5 +1,6 @@
-// Fast checks with no model: the segmenter, the rule-based flags and the emails.
-import { readFileSync } from 'node:fs';
+// Fast checks with no model: the segmenter, the rule-based flags, the emails and the extension.
+import { readFileSync, existsSync } from 'node:fs';
+import vm from 'node:vm';
 import { segment, matches } from '../src/segment.js';
 import { FLAGS } from '../src/flags.js';
 import { RULES, RULES_BY_ID } from '../src/rules.js';
@@ -115,6 +116,41 @@ check('every flag and rule has the parts an email needs', all.every((f) => f.why
   const items = withRules(xbText, xbSegs, [], { crossBorder: true }).slice(0, 3).map((h) => ({ f: PACK.find((r) => r.id === h.flag) ?? RULES_BY_ID[h.flag], seg: xbSegs[h.seg].text, note: h.note }));
   const combined = combinedEmail(items, parties(xbText));
   check('the combined email numbers every item and suggests wording for each', [1, 2, 3].every((i) => combined.includes(`\n${i}. `)) && combined.split('Suggested wording:').length === 4 && combined.startsWith(DISCLAIMER), combined);
+}
+
+// --- browser extension ----------------------------------------------------------------
+
+const ext = (f) => new URL(`../extension/${f}`, import.meta.url);
+const manifest = JSON.parse(readFileSync(ext('manifest.json')));
+{
+  const files = [manifest.background.service_worker, manifest.action.default_popup, ...manifest.content_scripts.flatMap((c) => c.js), ...Object.values(manifest.icons), 'sites.js', 'jobs.js', 'popup.js'];
+  check('the extension is Manifest V3 and every file it names exists', manifest.manifest_version === 3 && files.every((f) => existsSync(ext(f))), files.filter((f) => !existsSync(ext(f))).join(', '));
+  check('it asks for no broad access: activeTab, scripting and storage only', JSON.stringify(manifest.permissions.sort()) === '["activeTab","scripting","storage"]' && !manifest.host_permissions && !manifest.optional_host_permissions);
+  check('its only content script runs on ClauseGuard\'s own page', manifest.content_scripts.every((c) => c.matches.every((m) => /^(https:\/\/vanshajpoonia\.github\.io\/fine-print\/|http:\/\/localhost:8000\/)\*$/.test(m))));
+  check('its store description fits in 132 characters and says not legal advice', manifest.description.length <= 132 && /not legal advice/i.test(manifest.description), String(manifest.description.length));
+  check('the popup says not legal advice', /Not legal advice/.test(readFileSync(ext('popup.html'), 'utf8')));
+}
+{
+  const sandbox = {};
+  vm.runInNewContext(readFileSync(ext('sites.js'), 'utf8'), sandbox);
+  const S = sandbox.clauseguardSites;
+  check('Google Docs paths give the document\'s export base', S.docsBase('/document/d/1aB_c-9/edit') === '/document/d/1aB_c-9' && S.docsBase('/document/u/1/d/XyZ/edit?tab=t.0') === '/document/u/1/d/XyZ' && S.docsBase('/spreadsheets/d/XyZ/edit') === null);
+  check('page pictures are told apart from icons and banners', S.pageLike(816, 1056) && S.pageLike(1275, 1650) && !S.pageLike(1200, 300) && !S.pageLike(64, 64));
+}
+{
+  const { pick } = await import('../extension/jobs.js');
+  const t = (n) => ({ text: 'x'.repeat(n) });
+  check('the longest text wins over shorter text and over pictures', pick([t(10), { images: ['a', 'b'] }, t(50), null]).text.length === 50);
+  check('pictures win over an error, and an error is kept when nothing was found', pick([{ error: 'no' }, { images: ['a'] }]).images.length === 1 && pick([{ error: 'no' }, null]).error === 'no');
+}
+{
+  let listener;
+  const store = { 'job:0f0e9c2a-1b2c-4d5e-8f90-123456789abc': { text: 'contract' } };
+  const chrome = { runtime: { onMessage: { addListener: (fn) => { listener = fn; } } }, storage: { session: { get: async (k) => ({ [k]: store[k] }) } } };
+  const code = readFileSync(ext('background.js'), 'utf8').replace(/^import .*$/m, `const { APP_PAGES } = { APP_PAGES: ${JSON.stringify((await import('../extension/jobs.js')).APP_PAGES)} };`);
+  vm.runInNewContext(code, { chrome });
+  const ask = (url) => new Promise((resolve) => { if (!listener({ type: 'clauseguard:job', id: '0f0e9c2a-1b2c-4d5e-8f90-123456789abc' }, { url }, resolve)) resolve('refused'); });
+  check('the service worker hands a contract only to ClauseGuard\'s page', (await ask('https://vanshajpoonia.github.io/fine-print/?job=x'))?.text === 'contract' && (await ask('https://evil.example/fine-print/')) === 'refused');
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall unit checks pass');

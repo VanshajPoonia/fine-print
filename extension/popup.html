@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ClauseGuard</title>
+  <style>
+    :root { --paper: #f7f4ec; --ink: #1d1f24; --muted: #5f6470; --line: #e2dccd; --red: #c0392b; color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #14161a; --ink: #e8e4da; --muted: #a2a6ae; --line: #2c3037; --red: #ff8a78; color-scheme: dark; }
+    }
+    body { width: 320px; margin: 0; padding: 16px; background: var(--paper); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    h1 { margin: 0 0 4px; font: 600 18px/1.2 Georgia, serif; }
+    p { margin: 0 0 10px; }
+    .small { font-size: 12.5px; color: var(--muted); }
+    button { width: 100%; padding: 10px 14px; font: 600 14px/1.2 inherit; color: var(--paper); background: var(--ink); border: 0; border-radius: 10px; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    button:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+    #status:empty { display: none; }
+    #status { margin-top: 10px; }
+    .nla { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .nla strong { color: var(--ink); }
+  </style>
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <h1>ClauseGuard</h1>
+  <p class="small">Checks the contract on this page for clauses that cost freelancers money.</p>
+  <button id="go">Check this contract</button>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p class="small">Works on Google Docs, on DocuSign when it shows pages as pictures, and on any page where you select the contract's text. The text goes to ClauseGuard in a new tab on this device. Nothing is uploaded.</p>
+  <p class="small nla"><strong>Not legal advice.</strong> ClauseGuard points at clauses worth a second look. It can miss things and it can be wrong.</p>
+</body>
+</html>
