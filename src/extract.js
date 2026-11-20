@@ -5,6 +5,9 @@ const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
 const MAMMOTH = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
 
+/** Page numbers (from 1) with almost no text: pictures of pages, as in a scan. */
+export const scannedPages = (pages) => pages.flatMap((t, i) => (t.replace(/\s+/g, '').length < 20 ? [i + 1] : []));
+
 async function pdfText(buf) {
   const pdfjs = await import(PDFJS);
   pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
@@ -24,7 +27,7 @@ async function pdfText(buf) {
     }
     pages.push(s);
   }
-  return pages.join('\n\n');
+  return { text: pages.join('\n\n'), pages: pages.length, scanned: scannedPages(pages) };
 }
 
 function loadScript(src) {
@@ -43,10 +46,11 @@ async function docxText(buf) {
   return value;
 }
 
+/** @returns {Promise<{text: string, pages?: number, scanned?: number[]}>} */
 export async function fileToText(file) {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf') || file.type === 'application/pdf') return pdfText(await file.arrayBuffer());
-  if (name.endsWith('.docx')) return docxText(await file.arrayBuffer());
+  if (name.endsWith('.docx')) return { text: await docxText(await file.arrayBuffer()) };
   if (name.endsWith('.doc')) throw new Error('Old .doc files cannot be read here. Save it as .docx or PDF and try again.');
-  return file.text();
+  return { text: await file.text() };
 }

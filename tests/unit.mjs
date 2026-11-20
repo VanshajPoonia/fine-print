@@ -6,6 +6,7 @@ import { FLAGS } from '../src/flags.js';
 import { RULES, RULES_BY_ID } from '../src/rules.js';
 import { PACK } from '../src/crossborder.js';
 import { ruleHits, supersede, rulesFor, withRules } from '../src/scan.js';
+import { scannedPages } from '../src/extract.js';
 import { parties, fill, quote, sectionAt, counterProposal, combinedEmail, DISCLAIMER } from '../src/letters.js';
 
 let failed = 0;
@@ -67,6 +68,8 @@ const sample = readFileSync(new URL('../data/samples/freelance.txt', import.meta
 const found = new Set(ids(sample).map((x) => x.split(':')[0]));
 check('the sample contract trips all three rules', ['slowpay', 'satisfaction', 'revisions'].every((r) => found.has(r)), [...found].join(', '));
 check('every rule has advice to show', Object.values(RULES_BY_ID).every((r) => r.means && r.ask && r.title));
+
+check('PDF pages with no text are picked out as scanned', JSON.stringify(scannedPages(['1. Services The Contractor will design...', '  \n ', 'Page 3', 'A full page of contract text here.'])) === '[2,3]');
 
 // --- cross-border pack ----------------------------------------------------------------
 

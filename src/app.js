@@ -65,14 +65,20 @@ drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
 $('#file').addEventListener('change', (e) => { if (e.target.files[0]) readFile(e.target.files[0]); });
 
+// Pictures of pages have no text to read. Only on-device ways to copy it are suggested.
+const SCAN_HELP = 'If you have the original document, use that. Or copy the text with your device\'s own text recognition, such as Live Text in Preview on a Mac or in Photos on an iPhone, and paste it here.';
+
 async function readFile(file) {
   $('#status').textContent = `Reading ${file.name}…`;
   try {
-    const t = await fileToText(file);
-    if (!t.trim()) throw new Error('No text found. If it is a scanned PDF, it is a picture of text, and ClauseGuard cannot read pictures yet.');
+    const { text: t, pages, scanned = [] } = await fileToText(file);
+    if (!t.trim() || (pages && scanned.length === pages)) {
+      throw new Error(pages ? `${file.name} is a scanned PDF: pictures of its pages, with no text inside. ClauseGuard cannot read pictures of text yet. ${SCAN_HELP}` : 'No text found in this file.');
+    }
     setText(t);
     document.querySelectorAll('[data-sample]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-    $('#status').textContent = `${file.name}: ${t.split(/\s+/).length.toLocaleString()} words, read on this device.`;
+    const skipped = scanned.length ? ` Page${scanned.length > 1 ? 's' : ''} ${scanned.join(', ')} ${scanned.length > 1 ? 'look' : 'looks'} scanned, with no text inside, so ${scanned.length > 1 ? 'they were' : 'it was'} not read. ${SCAN_HELP}` : '';
+    $('#status').textContent = `${file.name}: ${t.split(/\s+/).length.toLocaleString()} words, read on this device.${skipped}`;
   } catch (err) {
     $('#status').textContent = err.message;
   }
