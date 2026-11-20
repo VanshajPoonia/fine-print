@@ -259,7 +259,7 @@ function showEmail(title, text) {
 $('#reply').addEventListener('click', () => {
   const chosen = new Set([...document.querySelectorAll('[data-reply]:checked')].map((x) => x.dataset.reply));
   const items = current.cards.filter((c) => chosen.has(c.id)).map(item);
-  showEmail('One email for all of them', items.length ? combinedEmail(items, current.names) : 'Tick "Include in my reply" on the clauses you want to raise.');
+  showEmail('Your reply: one email for all of them', items.length ? combinedEmail(items, current.names) : 'Tick "Include in my reply" on the clauses you want to raise.');
 });
 
 $('#copy').addEventListener('click', async () => {
