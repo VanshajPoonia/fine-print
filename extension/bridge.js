@@ -2,7 +2,11 @@
 // the contract from the extension's memory into the page, inside this tab.
 const job = new URLSearchParams(location.search).get('job');
 if (job) {
-  const contract = chrome.runtime.sendMessage({ type: 'clauseguard:job', id: job });
+  // If the extension cannot answer, the page is handed nothing and says to click again.
+  const contract = chrome.runtime.sendMessage({ type: 'clauseguard:job', id: job }).catch((err) => {
+    console.warn('ClauseGuard: the extension did not answer', err);
+    return null;
+  });
   window.addEventListener('message', async (e) => {
     if (e.source !== window || e.data?.type !== 'clauseguard:ready') return;
     window.postMessage({ type: 'clauseguard:contract', contract: await contract }, location.origin);
