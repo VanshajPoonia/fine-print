@@ -50,6 +50,12 @@ h1 { margin: 12px 0 12px; font: 600 clamp(28px, 6vw, 40px)/1.1 var(--serif); let
 h1 em { font-style: italic; text-decoration: underline wavy var(--red); text-decoration-thickness: 1.5px; text-underline-offset: 6px; }
 .lede { margin: 0; color: var(--muted); font-size: 17px; }
 .promise { margin: 14px 0 0; font-weight: 600; }
+.nla { margin: 6px 0 0; color: var(--muted); }
+.nla strong { color: var(--ink); }
+.report > .nla { margin-top: 10px; }
+.xb { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.xb strong { color: var(--ink); }
+.xb input { flex: none; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--ink); }
 
 .card { margin-top: 24px; padding: 18px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
 
@@ -109,6 +115,7 @@ progress { width: 100%; height: 6px; margin-top: 10px; accent-color: var(--ink);
 .flag dl { margin: 0; display: grid; gap: 6px; font-size: 14.5px; }
 .flag dt { font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .flag dd { margin: 0; }
+.flag dd.better { font: 14.5px/1.55 var(--serif); padding-left: 10px; border-left: 2px solid var(--line); }
 .flag-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; font-size: 13px; color: var(--muted); }
 .flag-foot label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); cursor: pointer; }
 .flag-foot input { width: 16px; height: 16px; accent-color: var(--ink); }

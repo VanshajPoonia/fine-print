@@ -1,19 +1,34 @@
-import { FLAGS, BY_ID, LEVELS } from './flags.js';
+import { BY_ID, LEVELS } from './flags.js';
 import { RULES_BY_ID } from './rules.js';
-import { scan } from './scan.js';
+import { PACK_BY_ID } from './crossborder.js';
+import { scan, withRules } from './scan.js';
 import { matches } from './segment.js';
 import { fileToText } from './extract.js';
+import { parties, fill, sectionAt, counterProposal, combinedEmail } from './letters.js';
 import * as model from './model.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const info = (id) => BY_ID[id] ?? RULES_BY_ID[id];
+const info = (id) => BY_ID[id] ?? RULES_BY_ID[id] ?? PACK_BY_ID[id];
 
 const heads = fetch('data/heads.json').then((r) => r.json());
 let lawyer = null; // the CUAD sample's lawyer highlights, while its text is unchanged
 let lawyerText = null;
 
 $('#size').textContent = `${model.SIZE_MB} MB`;
+
+// ---------- cross-border checks ------------------------------------------------------------
+
+// Remembered on this device only. Defaults to on.
+const XB_KEY = 'clauseguard-crossborder';
+try { $('#xb').checked = localStorage.getItem(XB_KEY) !== 'off'; } catch { $('#xb').checked = true; }
+const crossBorder = () => $('#xb').checked;
+
+$('#xb').addEventListener('change', () => {
+  try { localStorage.setItem(XB_KEY, crossBorder() ? 'on' : 'off'); } catch (err) { console.warn('Could not remember the cross-border setting', err); }
+  // The rules are cheap, so an open report updates without reading the contract again.
+  if (current) render(current.text, { segs: current.segs, hits: withRules(current.text, current.segs, current.model, { crossBorder: crossBorder() }) }, current.lawyerMarks, { scroll: false });
+});
 
 // ---------- getting the contract in --------------------------------------------------------
 
@@ -29,14 +44,16 @@ $('#text').addEventListener('input', () => {
 
 document.querySelectorAll('[data-sample]').forEach((b) => b.addEventListener('click', async () => {
   document.querySelectorAll('[data-sample]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-  if (b.dataset.sample === 'freelance') {
-    setText(await (await fetch('data/samples/freelance.txt')).text());
-  } else {
+  if (b.dataset.sample === 'cuad') {
     const c = await (await fetch('data/samples/cuad.json')).json();
     lawyer = c.lawyer;
     lawyerText = c.text;
     setText(c.text);
     $('#status').textContent = `${c.name}: a real agreement from an SEC filing, one of the 102 contracts held back from training. Lawyers' answers will be shown next to ClauseGuard's.`;
+  } else {
+    setText(await (await fetch(`data/samples/${b.dataset.sample}.txt`)).text());
+    if (b.dataset.sample === 'crossborder' && !crossBorder()) $('#xb').click();
+    $('#status').textContent = '';
   }
 }));
 
@@ -61,7 +78,7 @@ async function readFile(file) {
 
 // ---------- scanning ----------------------------------------------------------------------
 
-$('#scan').addEventListener('click', async () => {
+async function run() {
   const text = $('#text').value;
   const bar = $('#bar');
   $('#scan').disabled = true;
@@ -72,7 +89,7 @@ $('#scan').addEventListener('click', async () => {
     const embed = await model.load((p) => { bar.value = p; $('#status').textContent = `Downloading EmbeddingGemma… ${Math.round(p * 100)}%`; });
     const t0 = performance.now();
     $('#status').textContent = 'Reading every clause…';
-    const result = await scan(text, embed, await heads, (p) => { bar.value = p; $('#status').textContent = `Reading every clause… ${Math.round(p * 100)}%`; });
+    const result = await scan(text, embed, await heads, (p) => { bar.value = p; $('#status').textContent = `Reading every clause… ${Math.round(p * 100)}%`; }, { crossBorder: crossBorder() });
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
     $('#status').textContent = `Read ${result.segs.length} clauses in ${secs} s on this device (${model.backend() === 'webgpu' ? 'GPU' : 'CPU'}). Nothing was uploaded.`;
     render(text, result, text === lawyerText ? lawyer : null);
@@ -83,14 +100,15 @@ $('#scan').addEventListener('click', async () => {
     bar.hidden = true;
     $('#scan').disabled = false;
   }
-});
+}
+
+$('#scan').addEventListener('click', run);
 
 // ---------- the report --------------------------------------------------------------------
 
-/** Clause number at the start of a piece, for "(section 4.1)" in the reply. */
-const sectionOf = (t) => t.match(/^(?:section\s+|article\s+|clause\s+)?(\(?[0-9]+(?:\.[0-9]+)*\)?|\([a-z]\))[.)]?\s/i)?.[1];
+let current = null;
 
-function render(text, { segs, hits }, lawyerMarks) {
+function render(text, { segs, hits, model: modelHits = current?.model }, lawyerMarks, { scroll = true } = {}) {
   // One card per flag, with every clause that tripped it.
   const groups = new Map();
   for (const h of hits) (groups.get(h.flag) ?? groups.set(h.flag, []).get(h.flag)).push(h);
@@ -110,7 +128,7 @@ function render(text, { segs, hits }, lawyerMarks) {
   const agrees = (h) => lawyerMarks?.some((m) => m.flag === h.flag && matches(segs[h.seg], m));
   if (lawyerMarks) {
     const lawyerFlags = [...new Set(lawyerMarks.map((m) => m.flag))];
-    const ours = new Set(cards.filter((c) => !c.f.cuad ? false : true).map((c) => c.id));
+    const ours = new Set(cards.filter((c) => c.f.cuad).map((c) => c.id));
     const both = lawyerFlags.filter((f) => ours.has(f));
     const missed = lawyerFlags.filter((f) => !ours.has(f));
     const extra = [...ours].filter((f) => !lawyerFlags.includes(f));
@@ -127,11 +145,12 @@ function render(text, { segs, hits }, lawyerMarks) {
     $('#lawyers').hidden = true;
   }
 
+  const names = parties(text);
   $('#flags').innerHTML = cards.length ? cards.map((c, k) => {
     const top = c.hs[0];
     const seg = segs[top.seg];
     const more = c.hs.length - 1;
-    const strength = top.rule ? 'Found by a rule' : top.sure > 0.5 ? 'Strong match' : 'Possible match';
+    const strength = PACK_BY_ID[c.id] ? 'Cross-border rule' : top.rule ? 'Found by a rule' : top.sure > 0.5 ? 'Strong match' : 'Possible match';
     const lawyerTag = lawyerMarks && !top.rule
       ? (agrees(top) ? '<span class="tag agree">Lawyers marked this too</span>' : '<span class="tag extra">Lawyers did not mark this</span>')
       : '';
@@ -141,9 +160,11 @@ function render(text, { segs, hits }, lawyerMarks) {
       <dl>
         <dt>What it means</dt><dd>${esc(c.f.means)}</dd>
         <dt>What to ask for</dt><dd>${esc(c.f.ask)}</dd>
+        <dt>Wording to suggest</dt><dd class="better">${esc(fill(c.f.better, names, top.note))}</dd>
       </dl>
       <div class="flag-foot">
         <label><input type="checkbox" data-reply="${c.id}" ${c.f.level === 'info' ? '' : 'checked'}> Include in my reply</label>
+        <button class="link" data-counter="${c.id}">Write a counter-proposal</button>
         <span>${strength}</span>
         ${lawyerTag}
         <button class="link" data-show="${top.seg}">Show in contract</button>
@@ -169,13 +190,17 @@ function render(text, { segs, hits }, lawyerMarks) {
   $('#contract').innerHTML = html + esc(text.slice(pos));
 
   $('#report').hidden = false;
-  $('#report').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  current = { segs, cards };
+  if (scroll) $('#report').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  current = { text, segs, model: modelHits, cards, names, lawyerMarks };
 }
 
-let current = null;
-
 $('#flags').addEventListener('click', (e) => {
+  const counter = e.target.closest('[data-counter]');
+  if (counter) {
+    const c = current.cards.find((x) => x.id === counter.dataset.counter);
+    showEmail(`Counter-proposal: ${c.f.title.toLowerCase()}`, counterProposal(item(c), current.names));
+    return;
+  }
   const b = e.target.closest('[data-show]');
   if (!b) return;
   $('#contract-wrap').open = true;
@@ -185,20 +210,20 @@ $('#flags').addEventListener('click', (e) => {
   setTimeout(() => m.classList.remove('flash'), 1600);
 });
 
-// ---------- the reply ---------------------------------------------------------------------
+// ---------- the emails --------------------------------------------------------------------
+
+const item = (c) => ({ f: c.f, seg: current.segs[c.hs[0].seg].text, sec: sectionAt(current.segs, c.hs[0].seg), note: c.hs[0].note });
+
+function showEmail(title, text) {
+  $('#reply-title').textContent = title;
+  $('#reply-text').value = text;
+  $('#reply-dialog').showModal();
+}
 
 $('#reply').addEventListener('click', () => {
   const chosen = new Set([...document.querySelectorAll('[data-reply]:checked')].map((x) => x.dataset.reply));
-  const items = current.cards.filter((c) => chosen.has(c.id)).map((c, i) => {
-    const sec = sectionOf(current.segs[c.hs[0].seg].text);
-    const [head, ...rest] = c.f.reply.split(': ');
-    const body = rest.length ? `${head}${sec ? ` (section ${sec})` : ''}: ${rest.join(': ')}` : `${sec ? `Section ${sec}: ` : ''}${c.f.reply}`;
-    return `${i + 1}. ${body}`;
-  });
-  $('#reply-text').value = items.length
-    ? `Hi [name],\n\nThanks for sending the agreement over; I'm looking forward to the project. Before I sign, I'd like to suggest a few changes:\n\n${items.join('\n\n')}\n\nHappy to talk any of these through.\n\nBest,\n[your name]`
-    : 'Tick "Include in my reply" on the clauses you want to raise.';
-  $('#reply-dialog').showModal();
+  const items = current.cards.filter((c) => chosen.has(c.id)).map(item);
+  showEmail('One email for all of them', items.length ? combinedEmail(items, current.names) : 'Tick "Include in my reply" on the clauses you want to raise.');
 });
 
 $('#copy').addEventListener('click', async () => {

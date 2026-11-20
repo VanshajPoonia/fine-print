@@ -19,12 +19,14 @@
       <h1>Find the clauses that cost you money, <em>before</em> you sign.</h1>
       <p class="lede">Paste a client contract or drop in the PDF. A small AI model running in this tab reads every clause and marks the ones freelancers regret: non-competes, IP grabs, no cap on what you could owe, getting paid in 90 days. For each one you get what it means and what to ask for instead.</p>
       <p class="promise"><span aria-hidden="true">🔒</span> The contract never leaves this device. There is no server to send it to.</p>
+      <p class="nla"><strong>Not legal advice.</strong> It points at clauses worth a second look, and it can miss things.</p>
     </header>
 
     <section class="input card" aria-label="Your contract">
       <div class="samples">
         <span class="small">Try one:</span>
         <button class="chip" data-sample="freelance">A freelance design contract</button>
+        <button class="chip" data-sample="crossborder">A US client, a developer in India</button>
         <button class="chip" data-sample="cuad">A real contract, with the lawyers' answers</button>
       </div>
       <label class="drop" id="drop">
@@ -32,6 +34,7 @@
         <span><strong>Drop a PDF, DOCX or text file</strong> or click to choose one</span>
       </label>
       <textarea id="text" spellcheck="false" placeholder="…or paste the contract text here."></textarea>
+      <label class="xb"><input type="checkbox" id="xb" checked> <span><strong>Cross-border checks.</strong> I work from India for clients in the US, EU or elsewhere. Adds checks for payment timing under RBI rules, ownership before payment, disputes abroad, currency, transfer fees, non-compete reach and unpaid cancellation.</span></label>
       <div class="go">
         <button id="scan" class="primary" disabled>Read it for me</button>
         <p id="status" class="status small" aria-live="polite"></p>
@@ -47,8 +50,9 @@
           <h2 id="headline"></h2>
           <p id="counts" class="counts"></p>
         </div>
-        <button id="reply" class="secondary">Draft my reply</button>
+        <button id="reply" class="secondary">Write one email for all</button>
       </div>
+      <p class="nla small"><strong>Not legal advice.</strong> These are pointers and suggested wording, not a lawyer's review.</p>
       <div id="lawyers" class="lawyers" hidden></div>
       <ol id="flags" class="flags"></ol>
       <details class="contract" id="contract-wrap">
@@ -59,8 +63,9 @@
 
     <dialog id="reply-dialog">
       <form method="dialog">
-        <h2>Your reply</h2>
-        <p class="small">A starting point, built from the clauses you kept ticked. Edit it before you send it.</p>
+        <h2 id="reply-title">Your reply</h2>
+        <p class="small">Written on this device from ClauseGuard's templates and the clause itself. Fill in the [brackets] and edit it before you send it.</p>
+        <p class="nla small"><strong>Not legal advice.</strong> The suggested wording is a starting point. For a contract that matters, ask a lawyer to check it.</p>
         <textarea id="reply-text"></textarea>
         <div class="dialog-actions">
           <button id="copy" type="button" class="primary">Copy</button>
