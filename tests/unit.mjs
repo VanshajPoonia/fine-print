@@ -1,9 +1,11 @@
-// Fast checks with no model: the segmenter and the rule-based flags.
+// Fast checks with no model: the segmenter, the rule-based flags and the emails.
 import { readFileSync } from 'node:fs';
 import { segment, matches } from '../src/segment.js';
+import { FLAGS } from '../src/flags.js';
 import { RULES, RULES_BY_ID } from '../src/rules.js';
 import { PACK } from '../src/crossborder.js';
 import { ruleHits, supersede, rulesFor, withRules } from '../src/scan.js';
+import { parties, fill, quote, sectionAt, counterProposal, combinedEmail, DISCLAIMER } from '../src/letters.js';
 
 let failed = 0;
 const check = (name, ok, detail = '') => {
@@ -80,6 +82,39 @@ check('cross-border rules run only when asked for', rulesFor().length === RULES.
   const off = new Set(withRules(xb, segs, [], { crossBorder: false }).map((h) => h.flag));
   check('the cross-border sample trips the pack when it is on', ['ipearly', 'forum', 'realise', 'scope', 'killfee'].every((f) => on.has(f)), [...on].join(', '));
   check('and none of it when it is off', PACK.every((r) => !off.has(r.id)), [...off].join(', '));
+}
+
+// --- emails ---------------------------------------------------------------------------
+
+const freelance = readFileSync(new URL('../data/samples/freelance.txt', import.meta.url), 'utf8');
+const xbText = readFileSync(new URL('../data/samples/crossborder.txt', import.meta.url), 'utf8');
+check('names come from the contract\'s definitions', JSON.stringify(parties(freelance)) === '{"client":"the Company","me":"the Contractor"}' && JSON.stringify(parties(xbText)) === '{"client":"the Client","me":"the Developer"}', JSON.stringify([parties(freelance), parties(xbText)]));
+check('names fall back to the Client and the Contractor', JSON.stringify(parties('No definitions here.')) === '{"client":"the Client","me":"the Contractor"}');
+check('a name that starts a sentence is capitalised', fill('{client} pays. Then {me} delivers to {client}.', parties(xbText)) === 'The Client pays. Then the Developer delivers to the Client.');
+{
+  const segs = segment(xbText);
+  const i = segs.findIndex((x) => x.text.startsWith('The Client will pay each undisputed invoice'));
+  check('a sentence inside a clause gets that clause\'s section number', sectionAt(segs, i) === '2.2', `${i} ${sectionAt(segs, i)}`);
+}
+check('a long clause is quoted up to a word boundary', (() => { const q = quote(`4.1 ${'word '.repeat(100)}`); return q.endsWith('word…') && q.length <= 301 && !q.startsWith('4.1'); })());
+
+const all = [...FLAGS, ...RULES, ...PACK];
+check('every flag and rule has the parts an email needs', all.every((f) => f.why && f.better && f.reply), all.filter((f) => !(f.why && f.better && f.reply)).map((f) => f.id).join(', '));
+{
+  const names = parties(xbText);
+  const left = all.flatMap((f) => [f.why, f.better, f.reply].map((s) => fill(s, names, 'a note'))).filter((s) => /\{\w+\}/.test(s));
+  check('no template is left with an unfilled {placeholder}', !left.length, left.join(' | '));
+}
+{
+  const xbSegs = segment(xbText);
+  const hit = withRules(xbText, xbSegs, [], { crossBorder: true }).find((h) => h.flag === 'scope');
+  const email = counterProposal({ f: PACK.find((r) => r.id === 'scope'), seg: xbSegs[hit.seg].text, note: hit.note }, parties(xbText));
+  check('a counter-proposal names the section and quotes the clause', email.includes('section 4.1') && email.includes('"During the term of this Agreement and for twelve (12) months after'), email);
+  check('it fills in what the clause says and the contract\'s names', email.includes('12 months after the contract ends') && email.includes('the Developer will not provide the same services'), email);
+  check('it says it is not legal advice', email.startsWith(DISCLAIMER) && DISCLAIMER.includes('Not legal advice'));
+  const items = withRules(xbText, xbSegs, [], { crossBorder: true }).slice(0, 3).map((h) => ({ f: PACK.find((r) => r.id === h.flag) ?? RULES_BY_ID[h.flag], seg: xbSegs[h.seg].text, note: h.note }));
+  const combined = combinedEmail(items, parties(xbText));
+  check('the combined email numbers every item and suggests wording for each', [1, 2, 3].every((i) => combined.includes(`\n${i}. `)) && combined.split('Suggested wording:').length === 4 && combined.startsWith(DISCLAIMER), combined);
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall unit checks pass');

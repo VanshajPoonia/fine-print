@@ -6,6 +6,7 @@
 //
 // `cuad` lists the CUAD categories a flag is trained on (lawyer labels, CC BY 4.0).
 // `describe` is only used by the zero-shot baseline in tests/eval.mjs.
+// `why` and `better` go into the counter-proposal emails (src/letters.js).
 
 export const LEVELS = {
   red: { label: 'Red flag', order: 0 },
@@ -22,6 +23,8 @@ export const FLAGS = [
     means: 'Ownership of what you make moves to them. Broad versions also sweep in things you made before the project, or tools you reuse for every client.',
     ask: 'Ownership passes only once you have been paid in full. Your pre-existing tools, code, templates and know-how stay yours, licensed to them for this project. You keep the right to show the work in your portfolio.',
     reply: "Ownership: I'm happy for ownership of the final deliverables to pass to you once the final invoice is paid. My pre-existing tools, templates and know-how stay mine, licensed to you for this project, and I'd like to keep the right to show the work in my portfolio.",
+    why: 'As written, ownership of everything I make, including tools and templates I had before this project, passes to you straight away.',
+    better: 'Upon receipt of payment in full, {me} assigns to {client} all rights in the final deliverables. {me} keeps all pre-existing materials, tools and know-how, and grants {client} a non-exclusive licence to use any that are part of the deliverables. {me} may show the work in a portfolio.',
     describe: 'The contractor assigns all right, title and interest in the work product and intellectual property to the company.',
   },
   {
@@ -32,6 +35,8 @@ export const FLAGS = [
     means: 'Limits who else you can work for, or what kind of work you can take, sometimes for months after this contract ends.',
     ask: 'Delete it. If they insist, limit it to a short list of named direct competitors, for the length of the project only, and ask to be paid for the restriction.',
     reply: "Non-compete: I work with a number of clients, so I can't agree to a general restriction on who I work with. Could we remove it, or limit it to a short list of named direct competitors for the length of the project?",
+    why: 'I work with a number of clients, so a general limit on who I can work for would be hard for me to accept.',
+    better: 'During the term of this Agreement only, {me} will not provide the same services to the companies named in Schedule [X].',
     describe: 'A party may not compete with the other party or engage in a competing business during the term or after it ends.',
   },
   {
@@ -42,6 +47,8 @@ export const FLAGS = [
     means: 'You agree to work only with them, or to buy or sell only through them, in some field or region.',
     ask: 'Remove it, or limit it to this project\'s exact subject. Exclusivity is worth real money: if they want it, it should come with a retainer.',
     reply: "Exclusivity: I'm not able to work exclusively at this fee. If exclusivity matters to you, I'd be glad to discuss a retainer that reflects it; otherwise, could we remove this clause?",
+    why: 'Working for only one client is not something I can offer at this fee.',
+    better: '{me} may work for other clients during and after this Agreement, provided {me} keeps {client}\'s confidential information confidential.',
     describe: 'A party agrees to deal exclusively with the other party and not with anyone else.',
   },
   {
@@ -52,6 +59,8 @@ export const FLAGS = [
     means: 'Some or all of your liability has no ceiling, so one mistake could cost far more than the whole fee.',
     ask: 'Cap your total liability at the fees paid under this contract, and exclude indirect and consequential damages (lost profits, lost data, and the like).',
     reply: "Liability: could we cap my total liability at the fees paid under this agreement, and exclude indirect and consequential losses? That's standard for a project of this size.",
+    why: 'As written, my liability has no limit, which is out of proportion to the size of this project.',
+    better: 'Each party\'s total liability under this Agreement is limited to the fees paid under it. Neither party is liable for indirect or consequential losses, including lost profits or lost data.',
     describe: 'Liability for certain breaches or claims is unlimited and not subject to any cap.',
   },
   {
@@ -62,6 +71,8 @@ export const FLAGS = [
     means: 'You promise not to sue them, or not to challenge their ownership of something, sometimes even for matters outside this contract.',
     ask: 'Narrow it to the specific work in this contract and make it mutual.',
     reply: "Could we narrow this clause to the work under this agreement, and make it mutual?",
+    why: 'As written, this limits my rights beyond the work in this agreement.',
+    better: 'This clause applies only to the deliverables under this Agreement, and applies to both parties equally.',
     describe: 'A party agrees not to sue or not to contest the validity of the other party\'s intellectual property.',
   },
   {
@@ -72,6 +83,8 @@ export const FLAGS = [
     means: 'A party can end the contract without giving a reason, often on short notice. If only they have that right, a cancelled project can leave you unpaid for work already done.',
     ask: 'Payment for all work done up to cancellation, plus a kill fee (25 to 50% of the remaining fee is common), and the same right to walk away for you.',
     reply: "Cancellation: if the project is cancelled, I'd like to be paid for all work done up to that date plus a kill fee of [25]% of the remaining fee, and for the right to end the agreement on notice to apply to both of us.",
+    why: 'If the project is cancelled partway through, I would want to be paid for the work already done.',
+    better: 'Either party may end this Agreement on [14] days\' written notice. If {client} ends it, {client} will pay for all work done up to the end date, plus [25]% of the fees for the remaining work.',
     describe: 'Either party may terminate this agreement at any time for any reason or no reason upon written notice.',
   },
   {
@@ -82,6 +95,8 @@ export const FLAGS = [
     means: 'Sets an amount you owe if something happens (a late delivery, a breach) without them having to show what it actually cost them.',
     ask: 'Remove it, or cap the penalty at a small percentage of the fee and make it their only remedy for that problem.',
     reply: "Late-delivery penalties: could we remove these? If you need some protection, I'd suggest a cap of [5]% of the total fee as the only remedy for delays.",
+    why: 'A fixed penalty can quickly add up to more than the fee itself.',
+    better: 'If a delivery is late for reasons within {me}\'s control, {client}\'s only remedy is a reduction of [1]% of the fee for that milestone for each week of delay, up to [5]% in total.',
     describe: 'A party must pay a fixed amount of liquidated damages or a termination fee upon breach.',
   },
   {
@@ -92,6 +107,8 @@ export const FLAGS = [
     means: 'You cannot approach their customers or staff, or hire them, often for a while after the contract ends.',
     ask: 'Limit it to people you met through this project, for 6 to 12 months at most. Exclude clients who were yours before, and anyone who approaches you first.',
     reply: "Non-solicitation: could we limit this to people I'm introduced to through this project, for no more than [12] months, and exclude clients I already work with or who approach me first?",
+    why: 'As written, it could stop me working with clients I already have.',
+    better: 'For [12] months after this Agreement ends, {me} will not solicit employees or customers of {client} that {me} met through this project. This does not apply to anyone who was already {me}\'s client, or who contacts {me} first.',
     describe: 'A party may not solicit or hire the other party\'s employees or customers.',
   },
   {
@@ -102,6 +119,8 @@ export const FLAGS = [
     means: 'The contract rolls over automatically unless someone gives notice by a deadline, usually on the old terms and the old rate.',
     ask: 'Renewal only by written agreement from both sides, with a rate review at each renewal. If it stays, put the notice deadline in your calendar today.',
     reply: "Renewal: I'd prefer the agreement to renew only if we both agree in writing, with a chance to review rates at each renewal.",
+    why: 'I would like the chance to review the scope and the rates before any renewal.',
+    better: 'This Agreement renews only if both parties agree in writing, and the parties will review the fees at each renewal.',
     describe: 'This agreement automatically renews for successive terms unless either party gives notice of non-renewal.',
   },
   {
@@ -112,6 +131,8 @@ export const FLAGS = [
     means: 'You agree not to say anything negative about them in public.',
     ask: 'Make it mutual, and carve out honest reviews and anything you are legally required to say.',
     reply: "Non-disparagement: could we make this mutual, with a carve-out for honest reviews and anything required by law?",
+    why: 'I am happy not to criticise you in public, and would like the same in return.',
+    better: 'Neither party will make false or misleading public statements about the other. This does not stop either party from giving an honest review, or from saying anything the law requires.',
     describe: 'A party may not disparage or make negative statements about the other party.',
   },
   {
@@ -122,6 +143,8 @@ export const FLAGS = [
     means: 'Requires a party to hold insurance (often professional liability) at stated amounts.',
     ask: 'Check you already have it and at those amounts. If not, price the premium into your fee, or ask them to lower the amount.',
     reply: "Insurance: my current professional liability cover is [amount]. If you need more than that, I'll need to reflect the extra premium in the fee.",
+    why: 'My current professional liability cover is [amount], and higher cover would add a premium to the fee.',
+    better: '{me} will maintain professional liability insurance of at least [amount] during the term.',
     describe: 'A party must maintain insurance coverage such as general liability insurance in specified amounts.',
   },
   {
@@ -132,6 +155,8 @@ export const FLAGS = [
     means: 'They can audit your books or records, and sometimes come on site to do it.',
     ask: 'Limit it to records about this project, with reasonable notice, at most once a year, at their cost.',
     reply: "Records: could we limit inspection to records for this project, with reasonable notice, at most once a year, at your cost?",
+    why: 'I am happy to show records for this project, with reasonable notice.',
+    better: '{client} may inspect {me}\'s records for this project at most once a year, on [10] business days\' notice, at {client}\'s cost.',
     describe: 'A party has the right to audit the books, records or physical locations of the other party.',
   },
   {
@@ -142,6 +167,8 @@ export const FLAGS = [
     means: 'Limits how much a party can owe. Usually good news, if it covers you too: check whether it is mutual and what is carved out of it.',
     ask: 'Make sure the cap applies to you, not only to them, and that the carve-outs are narrow.',
     reply: "Liability cap: could we make the limitation of liability mutual, so that it applies to both of us?",
+    why: 'The limit of liability protects you, and I would like it to apply to both of us.',
+    better: 'Each party\'s total liability under this Agreement is limited to the fees paid under it.',
     describe: 'A party\'s total liability under this agreement shall not exceed a specified amount.',
   },
   {
@@ -152,6 +179,8 @@ export const FLAGS = [
     means: 'Disputes are decided under this place\'s law, often in its courts. If that is far from you, any dispute gets expensive fast.',
     ask: 'Your own state or country, or at least allow disputes to be handled remotely.',
     reply: "Governing law: could disputes be handled under the law of [my state/country], or at least allow for remote hearings or mediation?",
+    why: 'Since we are in different places, I would like disputes to be easy for both of us to take part in.',
+    better: 'Any dispute will first go to mediation by video call. If it is not settled within 30 days, it will be decided by online arbitration, with hearings held by video.',
     describe: 'This agreement shall be governed by and construed in accordance with the laws of a particular state or country.',
   },
 ];
