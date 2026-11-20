@@ -4,7 +4,11 @@
 
 Finds the clauses in a client contract that cost freelancers money, before you sign it.
 
-Paste the contract or drop in the PDF. **EmbeddingGemma**, Google's open-weight embedding model, reads every clause in your browser, and a small classifier trained on 350 contracts that lawyers had marked up flags the ones to worry about: non-competes, IP grabs, no cap on what you could owe, penalties, auto-renewal, cancel-at-any-time and more. Each flag comes with what it means and what to ask for instead, and **Draft my reply** turns the ones you tick into an email to the client.
+Paste the contract or drop in the PDF. **EmbeddingGemma**, Google's open-weight embedding model, reads every clause in your browser, and a small classifier trained on 350 contracts that lawyers had marked up flags the ones to worry about: non-competes, IP grabs, no cap on what you could owe, penalties, auto-renewal, cancel-at-any-time and more. Each flag comes with what it means, what to ask for and wording to suggest instead. **Write a counter-proposal** drafts a polite email about one clause, and **Draft my reply** writes one email covering every clause you tick.
+
+For freelancers in India working for clients abroad, **cross-border checks** add nine more: payment that could outlast the nine months RBI allows, ownership that passes before you are paid, disputes settled abroad, currency, transfer fees and withheld tax, how far a non-compete reaches, and unpaid cancellation.
+
+A **browser extension** runs the same check on a contract open in Google Docs or DocuSign. **Not legal advice.**
 
 **Live:** https://vanshajpoonia.github.io/fine-print/
 
@@ -28,9 +32,11 @@ contract (paste, PDF, DOCX) ──► clauses ──► EmbeddingGemma (q4, in t
                         trained on CUAD's lawyer highlights by scripts/train.mjs
                                                                                             │
                                                                                             ▼
-     flagged clauses ──► what it means, what to ask for, reply email: written by a person (src/flags.js)
+     flagged clauses ──► what it means, what to ask for, wording to suggest: written by a person (src/flags.js)
      + 3 pattern checks CUAD has no category for: payment terms over 30 days, "to the Company's
        sole satisfaction", unlimited revisions (src/rules.js)
+     + 9 cross-border pattern checks, when switched on (src/crossborder.js)
+     ──► counter-proposal emails, filled in from templates on the device (src/letters.js)
 ```
 
 - **The model finds; people wrote the advice.** Nothing a freelancer reads is generated. A small model explaining a legal clause in its own words is exactly where you do not want invention, so the AI's only job is deciding which clauses to show you, and that job can be measured.
@@ -85,10 +91,82 @@ What the table teaches:
 
 CUAD's annotators often highlight one instance of a clause per contract, so some "false alarms" are real clauses they did not mark. `node scripts/audit.mjs 40` prints 40 at random. Reading them: **8** are plainly the right kind of clause (a liability cap, an insurance requirement, an audit right), **12** are next to one (its heading, a carve-out, a recital), and **20** are plain mistakes (a press-release quote flagged as exclusivity). Every number above still counts all of them as wrong.
 
+## Cross-border checks for freelancers in India
+
+Switched on by default, and off with one tick. Nine pattern checks in `src/crossborder.js`, each with what it means in plain words, what to ask for, and wording to suggest instead:
+
+| Check | What it looks for |
+|---|---|
+| No date for getting paid | Fees, but no number of days to pay them in |
+| Nothing happens if they pay late | A due date, but no late fee, interest or right to pause work |
+| Payment could take longer than RBI allows | Paid when they are paid, a holdback, payment on launch or funding, or over 270 days |
+| They own the work before they pay for it | "Hereby assigns", "upon creation", "work made for hire", "will assign" with nothing tying it to payment |
+| Disputes are settled abroad | Courts, arbitration or governing law outside India |
+| Which currency, at whose rate | "$" with no currency named, no currency at all, or an exchange rate they choose |
+| Transfer fees or tax come out of your pay | Bank, transfer or platform fees on you, or tax withheld from payments |
+| Non-compete reaches too far | Restrictions that last after the contract, cover a whole region, or any business in the field |
+| Cancelled work goes unpaid | If it ends early, only accepted work is paid, or nothing is owed |
+
+A narrower check replaces the model's broader flag on the same clause, so a non-compete shows once, with its reach in the title.
+
+**The RBI rule.** Since 1 October 2026, money for exported services has to reach India within **nine months of the invoice date**, or twelve if invoiced or settled in rupees. Your bank can extend that if you ask with reasons. It was fifteen months until the change. Source: RBI, Foreign Exchange Management (Export and Import of Goods and Services) Regulations, 2026, regulation 5(1), [as amended up to 2 November 2026](https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13277&Mode=0), and the [amendment of 22 September 2026](https://m.rbi.org.in/scripts/BS_FemaNotifications.aspx?Id=13714) that cut fifteen months to nine.
+
+### Measured
+
+`node tests/crossborder.mjs` (part of `npm test`):
+
+- **Written fixtures.** 72 clauses that should be flagged and 72 that should not, used while writing the checks: all 72 found, no false alarms. Then 45 and 45 more, written afterwards and run once before any change: **37 of 45 found (82%), false alarms on 2 of 45 (4%)**. The checks have changed since, and these fresh clauses now give 36 of 45 and 2 of 45. The misses are printed, so you can see what each check cannot read yet.
+- **Whole contracts.** The cross-border sample in the app trips exactly the eight checks it was written to trip. A fair contract (`tests/fixtures/fair.txt`) trips none.
+- **CUAD's 102 held-out contracts**, where a CUAD category covers the check. Disputes abroad finds 82 of 90 governing-law clauses (91%). Ownership before payment finds 16 of 61 IP assignment clauses (26%), and 16 of its 20 flags (80%) are on one. Non-compete reach finds 10 of 59 non-competes (17%), and 9 of its 15 flags (60%) are on one. Both skip clauses on purpose: assignments that wait for payment, and narrow non-competes.
+- **Read by hand.** The other checks have no CUAD category, so `node scripts/audit-rules.mjs` prints a random sample of each one's flags on those same contracts to read. On a sample not used while tuning (`SEED=202`, and `SEED=303` for the late-fee check after a bug fix), the flag was on the right kind of clause in: disputes abroad 10 of 10, ownership 9 of 10, currency 9 of 10, late fee 7 of 10, fees and tax 6 of 10, non-compete reach 6 of 10, no payment date 3 of 10, unpaid cancellation 0 of 1 (its only flag was a bribery clause). The RBI check raises nothing on CUAD. These are company-to-company contracts, so payment terms in them look little like a freelancer's, and the payment checks do worst there.
+
+## Counter-proposal emails
+
+Every card has **Write a counter-proposal**, and **Draft my reply** writes one email for all the cards you tick. Nothing is generated by a model. Each flag carries a polite reason and wording to suggest, written by a person, and `src/letters.js` fills them in on the device with:
+
+- the clause's section number, found by looking back to the nearest numbered clause when the flagged sentence is not the first one;
+- a quote of the clause, cut at a word boundary;
+- what the check found, such as "12 months after the contract ends, anywhere in the world";
+- the contract's own names for each side, taken from its definitions, such as "the Company" and "the Developer".
+
+Brackets like `[30]` mark numbers to choose. Every draft starts with a line saying it is not legal advice, to delete before sending.
+
+## Scanned PDFs
+
+ClauseGuard reads PDFs with pdf.js, which only gets the text stored in the file. A scan is a picture of each page with no text inside. ClauseGuard now spots those pages and names them, where before they were dropped without a word, and points to text recognition that also runs on your device, such as Live Text.
+
+It can also try to read them itself, on the device, with a **beta text reader**: TrOCR-small-printed (64 MB) through transformers.js, which ClauseGuard already uses. TrOCR reads one line at a time, so `src/ocr.js` first straightens the page and cuts it into lines and groups of words. TrOCR was trained on receipts and writes only capital letters, so the text is put back into sentence case afterwards. Nothing is uploaded: pdf.js draws the page in the tab and the model reads it there.
+
+`node scripts/scans.mjs` typesets four contracts whose text is known (the two samples, the fair contract and the start of the CUAD sample) into 11 pages, and makes two scanned-looking copies of each: a flatbed scan (200 dpi, tilted 0.4 degrees, slightly blurred) and a phone photo (150 dpi, tilted 1.2 degrees, with grain, uneven light and heavy JPEG). `node scripts/ocr.mjs` reads them, counts character errors against the true text, and checks whether ClauseGuard raises the same flags on the read text as on the true text, model and rules together.
+
+| Reader | Download | Errors, scan | Errors, photo | Flags kept, scan | Flags kept, photo | Seconds a page |
+|---|---|---|---|---|---|---|
+| **TrOCR-small-printed, line by line (in ClauseGuard, beta)** | 64 MB | 4.8% (1.0% ignoring case) | 5.3% (1.4% ignoring case) | 28 of 31, 2 new | 27 of 31, 4 new | 16 to 18 |
+| Florence-2-base-ft, whole page | 265 MB | 40.7% | 41.0% | 9 of 31 | 5 of 31 | 16 |
+| granite-docling-258M, 4-bit and 8-bit | 260 MB | repeats one phrase | nothing | - | - | 25 to 237 |
+| Tesseract 5 (tesseract.js 5.1.1), for comparison only | 9 MB | 0.4% | 0.6% | 31 of 31 | 31 of 31 | 28 to 43 |
+
+Seconds are per page in Node on a Mac shared with other jobs, not in a browser, where it will be slower. Errors are edits needed per character of true text, and most of the beta reader's errors are capital letters it cannot know. Making this table found two bugs in the page straightening. It measured every page as level, and once that was fixed, it turned pages the wrong way, which dropped the flags kept on scans to 9 of 31 until it was fixed too.
+
+Tesseract reads these pages almost perfectly and raises no extra flags, from a smaller download. It is a new library, so it is not in ClauseGuard until it is approved. Until then the beta reader is what runs. These are typeset pages made to look scanned, not real scans of signed paper, which will be harder.
+
+## Browser extension
+
+`extension/` is a Manifest V3 extension. It asks for `activeTab`, `scripting` and `storage` only, and does nothing until you click it. Then it reads the contract from the tab you are on and opens ClauseGuard in a new tab with it.
+
+- **Google Docs** draws its text on a canvas, so the page has no text to read. The extension asks Google Docs for the document's plain-text export instead: a same-origin request that redirects to a signed download link, which allows it. If that fails, it reads Docs' basic HTML view. This needs the right to download: if the owner turned off downloading and copying for viewers, it says so.
+- **DocuSign** shows most documents as one picture per page. The extension collects the page pictures the viewer has loaded, and ClauseGuard offers to read them with its beta text reader (see "Scanned PDFs" above), or tells you to use DocuSign's Download and drop the PDF in, which is more reliable. Pages DocuSign has not loaded yet are not there to collect, so scroll through first.
+- **Any other page**: the text you selected, or the page's visible text.
+
+The contract waits in `chrome.storage.session`, which is memory only, never synced and cleared when Chrome closes. A content script that runs only on ClauseGuard's own page passes it in through a message inside that tab. `npm run extension` builds the zip for the Chrome Web Store, and `privacy.html` is the privacy page the listing needs.
+
+What has been tested: the manifest, permissions, the Docs URL and page-picture helpers, how the popup picks between frames, and that the service worker hands a contract only to ClauseGuard's page, all in `tests/unit.mjs`. That the Docs export allows the redirect was checked with curl on a public document. It has not yet been run in Chrome against a private Google Doc or a real DocuSign envelope.
+
 ## Limits
 
-- Scanned PDFs are pictures of text; ClauseGuard cannot read them (yet).
+- Scanned PDFs are read by a beta reader that misreads some words and writes everything in lower case except the start of each sentence. The original document is always better. See "Scanned PDFs" above.
 - English only. CUAD is US commercial contracts; a freelance contract under another country's law may phrase things differently.
+- The cross-border checks are patterns. They read the phrasings in the fixtures and the CUAD sample, and will miss others. They do not know which country's law applies to your contract.
 - It points at clauses. It does not know your situation, and it can miss things. **Not legal advice.**
 
 ## Run it
@@ -96,10 +174,16 @@ CUAD's annotators often highlight one instance of a clause per contract, so some
 ```bash
 npm start           # static server on :8000, no build step
 npm install         # only for the scripts and tests
-npm test            # unit checks, then the evaluation on CUAD's test set (downloads CUAD, 18 MB)
+npm test            # unit checks, the cross-border checks, then the evaluation on CUAD's test set (downloads CUAD, 18 MB)
 npm run train       # re-train data/heads.json (the test does this too, and checks it matches)
 MODEL=bge npm test  # the same with bge-small
+npm run extension   # the browser extension's zip for the Chrome Web Store, in dist/
+node scripts/audit-rules.mjs        # a random sample of each cross-border check's flags on CUAD, to read
+node scripts/scans.mjs              # scanned-looking test pages from contracts whose text is known
+node scripts/ocr.mjs run trocr      # OCR them through transformers.js, then: node scripts/ocr.mjs score trocr
 ```
+
+To try the extension unpacked: open `chrome://extensions`, turn on Developer mode, choose Load unpacked and pick the `extension` folder.
 
 The first run embeds about 37,000 clauses and takes a while (about 40 minutes on an M4); embeddings are cached in `tests/.cache`.
 
@@ -109,9 +193,11 @@ The first run embeds about 37,000 clauses and takes a while (about 40 minutes on
 src/segment.js     contract text -> clauses, with offsets
 src/embed.js       the embedding models (shared by the browser and the scripts)
 src/scan.js        clauses -> flags
-src/flags.js       the 14 flags: which CUAD categories, what it means, what to ask for, reply line
+src/flags.js       the 14 flags: which CUAD categories, what it means, what to ask for, wording to suggest
 src/rules.js       the 3 pattern checks
-src/extract.js     PDF and DOCX to text, in the browser
+src/crossborder.js the 9 cross-border checks
+src/letters.js     counter-proposal emails from templates
+src/extract.js     PDF and DOCX to text, in the browser, and which PDF pages are scanned
 src/model.js       EmbeddingGemma in the browser (WebGPU, or WASM with the fallback build)
 src/app.js         UI
 scripts/data.mjs   CUAD -> labelled clauses
@@ -119,10 +205,17 @@ scripts/train.mjs  fits the heads, chooses thresholds
 scripts/measure.mjs  the scoring every approach shares
 scripts/audit.mjs  prints 40 random false alarms to read
 scripts/fallback.mjs  how often the no-WebGPU build agrees with the measured one
-tests/unit.mjs     segmenter and rules, no model
+scripts/audit-rules.mjs  prints a random sample of each cross-border check's flags on CUAD
+scripts/scans.mjs  makes scanned-looking test pages; scripts/ocr.mjs reads and scores them
+scripts/extension.mjs  builds the extension's store zip
+tests/unit.mjs     segmenter, rules, emails and extension, no model
+tests/crossborder.mjs  the cross-border checks on fixtures, whole contracts and CUAD
+tests/fixtures/    clauses and a fair contract written for those checks
 tests/eval.mjs     the evaluation
+extension/         the browser extension (Manifest V3)
+privacy.html       the privacy page for the extension's store listing
 data/heads.json    the trained heads
-data/samples/      a freelance contract written for the demo, and one CUAD test contract with the lawyers' answers
+data/samples/      two contracts written for the demo (one cross-border), and one CUAD test contract with the lawyers' answers
 ```
 
 ## Credits
