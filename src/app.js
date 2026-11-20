@@ -14,6 +14,7 @@ const info = (id) => BY_ID[id] ?? RULES_BY_ID[id] ?? PACK_BY_ID[id];
 const heads = fetch('data/heads.json').then((r) => r.json());
 let lawyer = null; // the CUAD sample's lawyer highlights, while its text is unchanged
 let lawyerText = null;
+let fromNote = ''; // where the extension got the contract, while its text is unchanged
 
 $('#size').textContent = `${model.SIZE_MB} MB`;
 
@@ -39,6 +40,7 @@ const setText = (t) => {
 
 $('#text').addEventListener('input', () => {
   $('#scan').disabled = !$('#text').value.trim();
+  fromNote = '';
   document.querySelectorAll('[data-sample]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
 });
 
@@ -91,7 +93,7 @@ async function run() {
     $('#status').textContent = 'Reading every clause…';
     const result = await scan(text, embed, await heads, (p) => { bar.value = p; $('#status').textContent = `Reading every clause… ${Math.round(p * 100)}%`; }, { crossBorder: crossBorder() });
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
-    $('#status').textContent = `Read ${result.segs.length} clauses in ${secs} s on this device (${model.backend() === 'webgpu' ? 'GPU' : 'CPU'}). Nothing was uploaded.`;
+    $('#status').textContent = `${fromNote}Read ${result.segs.length} clauses in ${secs} s on this device (${model.backend() === 'webgpu' ? 'GPU' : 'CPU'}). Nothing was uploaded.`;
     render(text, result, text === lawyerText ? lawyer : null);
   } catch (err) {
     console.error(err);
@@ -103,6 +105,34 @@ async function run() {
 }
 
 $('#scan').addEventListener('click', run);
+
+// ---------- from the browser extension ------------------------------------------------------
+
+// The extension opens this page with ?job=… and its bridge script (extension/bridge.js) passes
+// the contract in, inside this tab. Only messages from this same window are accepted.
+if (new URLSearchParams(location.search).has('job')) {
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== location.origin || e.data?.type !== 'clauseguard:contract') return;
+    fromExtension(e.data.contract);
+  });
+  window.postMessage({ type: 'clauseguard:ready' }, location.origin);
+  $('#status').textContent = 'Waiting for the contract from the ClauseGuard extension…';
+}
+
+function fromExtension(c) {
+  if (!c) {
+    $('#status').textContent = 'The contract from the extension is no longer here. Click the extension again.';
+    return;
+  }
+  const from = `From ${c.source}${c.title ? `, "${c.title}"` : ''}`;
+  if (c.text) {
+    setText(c.text);
+    fromNote = `${from}. `;
+    run();
+  } else {
+    $('#status').textContent = `${from}: the pages are pictures. ClauseGuard cannot read pictures of text yet. In DocuSign, use Other actions, then Download, and drop the PDF in here.`;
+  }
+}
 
 // ---------- the report --------------------------------------------------------------------
 
