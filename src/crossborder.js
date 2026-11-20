@@ -21,11 +21,11 @@ const each = (segs, test) => segs.flatMap((s, i) => {
 
 const PAYS = /\b(?:invoice[sd]?|fees?|payments?|pay|paid|payable|compensation|remuneration)\b/i;
 const MONEY = /(?:[$€£₹]\s?\d|\b(?:USD|EUR|GBP|INR|US\$)\s?\d|\d[\d,.]*\s?(?:dollars|euros?|pounds|rupees|USD|EUR|GBP|INR)\b)/i;
-const PAYING = /\b(?:shall|will|must|agrees?\s+to)\s+(?:\w+\s+)?(?:pay|settle)\b|\b(?:payable|paid|due|remit|remits|receive|receives)\b|\bpayment\s+(?:of|for|is|will|shall)\b/i;
+const PAYING = /\b(?:shall|will|must|agrees?\s+to)\s+(?:\w+\s+)?(?:pay|settle)\b|\b(?:pays|payable|paid|due|remit|remits|receive|receives|invoiced|billed|charged)\b|\bpayment\s+(?:of|for|is|will|shall)\b|\b(?:fees?|rates?|retainer|compensation)\s+(?:is|are|of|will\s+be|shall\s+be)\b/i;
 const CURRENCY = /[$€£₹]|\b(?:USD|EUR|GBP|INR|CAD|AUD|SGD|CHF|AED|dollars?|euros?|pounds?\s+sterling|rupees?|sterling)\b/i;
 const FEE = '(?:(?:bank|wire|transfer|transaction|remittance|conversion|currency|platform|paypal|payment|processing|intermediary|swift|foreign\\s+exchange)\\s+(?:or\\s+|and\\s+|\\/\\s*)?)+(?:charges?|fees?|costs?)\\b';
 const DEADLINE = /\bnet\s*\(?\d{1,3}\)?(?!\s*%)|\bwithin\s+[^.;]{0,40}?\b(?:days?|weeks?|months?)\b|\b\d{1,3}\)?\s+(?:calendar\s+|business\s+)?days\s+(?:of|after|from|following)\b|\b(?:due|payable|paid)\s+(?:up)?on\s+receipt\b|\b(?:in\s+advance|before\s+work\s+(?:starts|begins))\b|\b(?:on\s+or\s+before|no\s+later\s+than|not\s+later\s+than)\b|\bby\s+the\s+\d{1,2}(?:st|nd|rd|th)\b|\bprior\s+to\s+the\s+\w+\s+(?:business\s+|calendar\s+)?day\b|\b(?:payable|due|paid)\s+within\b|\bwithin\s+\[/i;
-const LATE = /\blate\s+(?:payment\s+)?(?:fees?|charges?|interest)|\binterest\b[^.;]{0,80}\b(?:overdue|late|past\s+due|unpaid|outstanding)|\b(?:overdue|late|past\s+due|unpaid|outstanding)\b[^.;]{0,80}\b(?:interest|late\s+fee|surcharge)|\b(?:service|finance)\s+charge|\b(?:suspend|stop|pause)\s+(?:work|the\s+services|services|performance)/i;
+const LATE = /\blate\s+(?:payment\s+)?(?:fees?|charges?|interest)|\binterest\b[^.;]{0,80}\b(?:overdue|late|past\s+due|unpaid|outstanding)|\b(?:overdue|late|past\s+due|unpaid|outstanding)\b[^.;]{0,80}\b(?:interest|late\s+fee|surcharge)|\b(?:service|finance)\s+charge|\b(?:bears?|accrues?|carry|carries)\s+interest\b|\bwith\s+(?:accrued\s+)?interest\b|\b(?:suspend|stop|pause)\s+(?:work|the\s+services|services|performance)/i;
 
 // Where the payment terms are, so absence checks have a clause to point at.
 // Scored, so the card quotes a clause about paying fees, not a definition, a table of contents
@@ -93,7 +93,8 @@ export const PACK = [
     reply: 'Late payment: could we add interest of [1.5]% a month on overdue invoices, and let me pause work if an invoice is more than [15] days late?',
     why: 'Working across borders, a late invoice is hard for me to chase, so I ask every client for a simple late-payment term.',
     find(text, segs) {
-      if (LATE.test(text)) return [];
+      // "i.e." and "e.g." would otherwise end the search window at their full stops.
+      if (LATE.test(text.replace(/\b(?:i\.e|e\.g)\./gi, (m) => m.replaceAll('.', '')))) return [];
       return at(paymentClause(segs, true), { note: 'no late fee' });
     },
   },
@@ -138,7 +139,7 @@ export const PACK = [
       if (/\b(?:title|ownership|rights?|assignment)\b[^.;]{0,100}\b(?:pass|passes|transfer|transfers|vest|vests|take\s+effect|takes\s+effect|effective)\b[^.;]{0,60}\b(?:upon|on|after|following|once|subject\s+to)\b[^.;]{0,40}\b(?:payment\s+in\s+full|full\s+payment|final\s+payment|paid\s+in\s+full)/i.test(text)) return [];
       return each(segs, (t) => {
         if (/\b(?:upon|after|following|subject\s+to|conditional\s+(?:up)?on|once|when)\s+(?:the\s+)?(?:receipt\s+of\s+)?(?:full|final|complete)\s+payment|\b(?:paid|payment)\s+in\s+full\b/i.test(t)) return null;
-        const ipContext = /\b(?:intellectual\s+property|copyrights?|right,?\s+title,?\s+and\s+interest|work\s+product|deliverables|inventions?|works?\s+of\s+authorship|materials|artwork|designs?|software|source\s+code|technology|improvements)\b|\ball\s+(?:its\s+|their\s+|of\s+its\s+)?rights\s+(?:in|it\s+may\s+acquire)\b/i.test(t);
+        const ipContext = /\b(?:intellectual\s+property|copyrights?|patents?|work\s+product|deliverables|inventions?|works?\s+of\s+authorship|materials|artwork|designs?|software|source\s+code|technology|improvements)\b|\ball\s+(?:its\s+|their\s+|of\s+its\s+)?rights\s+(?:in|it\s+may\s+acquire)\b/i.test(t);
         if (/\bworks?[\s-]+(?:made[\s-]+)?for[\s-]+hire\b/i.test(t)) return { note: 'work made for hire' };
         if (!ipContext) return null;
         if (/\bupon\s+(?:its\s+|their\s+)?creation\b/i.test(t)) return { note: 'upon creation' };
@@ -147,7 +148,8 @@ export const PACK = [
           ?? t.match(/\b(?:will|shall|agrees?\s+to)\s+(?:promptly\s+|irrevocably\s+)?assign\b/i);
         if (verb) return { note: verb[0].toLowerCase().replace(/\s+/g, ' ') };
         const owns = t.match(/\b(?:shall|will)\s+(?:become|be\s+(?:deemed\s+(?:to\s+be\s+)?)?)(?:the\s+)?(?:sole\s+and\s+exclusive\s+|exclusive\s+|sole\s+)?property\s+of\b|\bdeemed\s+to\s+be\s+(?:the\s+)?(?:[\w’']+\s+)?(?:sole\s+and\s+exclusive\s+|exclusive\s+|sole\s+)?property\b|\b(?:shall|will)\s+be\s+(?:solely\s+|exclusively\s+)?owned\s+by\b|\b(?:shall|will)\s+(?:solely\s+|exclusively\s+)?own\s+(?:and\s+retain\s+)?all\s+right/i);
-        if (owns) return { note: owns[0].toLowerCase().replace(/\s+/g, ' ') };
+        const made = /\b(?:created|developed|prepared|made|authored|conceived|produced|written|designed)\s+(?:[\w,]+\s+){0,6}by\s+(?:the\s+)?(?:contractor|consultant|developer|designer|freelancer|supplier|writer|creator|vendor|service\s+provider|you)\b|\bin\s+the\s+course\s+of\s+(?:performing|providing)\s+the\s+services\b|\bwithin\s+the\s+scope\s+of\s+this\s+agreement\b/i.test(t);
+        if (owns && made) return { note: owns[0].toLowerCase().replace(/\s+/g, ' ') };
         return null;
       });
     },
@@ -198,7 +200,7 @@ export const PACK = [
         if (s) return at(s, { note: 'no currency named' });
       }
       if (/\$\s?\d/.test(text) && !/\b(?:USD|CAD|AUD|SGD|NZD|HKD)\b|\b(?:US|U\.S\.|C|A|S|NZ|HK)\s?\$|\b(?:U\.S\.|US|United\s+States|American|Canadian|Australian|Singapore)\s+dollars?\b/i.test(text)) {
-        return at(segs.find((s) => /\$\s?\d/.test(s.text) && PAYS.test(s.text)) ?? segs.find((s) => /\$\s?\d/.test(s.text)), { note: 'which dollars' });
+        return at(paymentClause(segs.filter((s) => /\$\s?\d/.test(s.text))), { note: 'which dollars' });
       }
       return [];
     },
@@ -216,7 +218,8 @@ export const PACK = [
     find(text, segs) {
       return each(segs, (t) => {
         if (new RegExp(`${FEE}[^.;]{0,80}?\\b(?:borne|paid|deducted|absorbed|for\\s+the\\s+account)\\s+(?:by|of|from)\\s+(?:the\\s+)?(?:contractor|consultant|freelancer|service\\s+provider|supplier|vendor|developer|designer|you|payee)\\b|${FEE}[^.;]{0,40}?\\bdeducted\\s+from\\s+(?:the\\s+)?(?:amounts?|payments?|fees?|invoices?)|\\b(?:net\\s+of|less)\\s+(?:all\\s+|any\\s+)?(?:applicable\\s+)?${FEE}`, 'i').test(t)) return { note: 'transfer fees' };
-        if (/(?<!\b(?:not|never)\s)\b(?:deduct|withhold)(?:s|ed|ing)?\s+(?:from\s+(?:any\s+)?(?:payments?|amounts?)\s+)?(?:any\s+|all\s+)?(?:applicable\s+)?(?:withholding\s+)?tax(?:es)?\b|\bsubject\s+to\s+(?:any\s+)?(?:applicable\s+)?withholding\s+tax/i.test(t)) return { note: 'withholding tax' };
+        if (/["”]\s*(?:shall\s+)?means?\b|\bhas\s+the\s+meaning\b|\bfree\s+(?:and\s+clear\s+)?of\s+(?:any\s+)?withholding|\brecover(?:y|ing)?\b/i.test(t)) return null;
+        if (/(?<!\b(?:not|never)\s)\b(?:deduct|withhold)(?:s|ed|ing)?\b(?:\s+and\s+(?:deduct|withhold)\w*)?\s+(?:from\s+(?:any\s+|each\s+)?(?:payments?|amounts?)\s+)?(?:any\s+|all\s+|such\s+)?(?:applicable\s+)?(?:withholding\s+|income\s+)?tax(?:es)?\b(?:[^.;]{0,60}\b(?:from|on)\s+(?:any\s+|each\s+|the\s+)?(?:payments?|amounts?|invoices?|fees?))?|\bsubject\s+to\s+(?:any\s+)?(?:applicable\s+)?withholding\s+tax/i.test(t) && PAYS.test(t)) return { note: 'withholding tax' };
         return null;
       });
     },
@@ -245,7 +248,7 @@ export const PACK = [
         const where = t.match(/\b(worldwide|anywhere\s+in\s+the\s+world|throughout\s+the\s+world|globally|North\s+America|the\s+United\s+States|Europe|the\s+European\s+Union|the\s+Territory|anywhere\s+in\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
         if (where) parts.push(where[1].replace(/\s+/g, ' '));
         const broad = /\bany\s+(?:other\s+)?(?:business|company|person|entity|client|customer|competitor|competing|third\s+party|organi[sz]ation|publication|agency|brand)\b/i.test(t) && !/\bnamed\b|\blisted\s+in\b|\bschedule\b/i.test(t);
-        if (!parts.length && !broad) return null;
+        if (!parts.length && !(broad && /\bcompet/i.test(t))) return null;
         if (!parts.length) parts.push('any business in the field');
         return { note: parts.join(', ') };
       });
