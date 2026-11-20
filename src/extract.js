@@ -1,6 +1,8 @@
 // PDF, DOCX or plain text -> one string, all in the browser. The two parsers are loaded
 // only when a file of that type is dropped in.
 
+import { grey } from './ocr.js';
+
 const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
 const MAMMOTH = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
@@ -27,7 +29,46 @@ async function pdfText(buf) {
     }
     pages.push(s);
   }
-  return { text: pages.join('\n\n'), pages: pages.length, scanned: scannedPages(pages) };
+  return { text: pages.join('\n\n'), pages: pages.length, pageTexts: pages, scanned: scannedPages(pages) };
+}
+
+// Pictures of pages as grey pixels, at about 200 dpi, which is what scripts/ocr.mjs measured.
+const canvasPixels = (canvas) => {
+  const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+  return { g: grey(data, canvas.width, canvas.height), w: canvas.width, h: canvas.height };
+};
+
+/** Renders the given PDF pages (numbered from 1) for reading. */
+export async function* pdfPages(buf, numbers) {
+  const pdfjs = await import(PDFJS);
+  pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  for (const n of numbers) {
+    const page = await doc.getPage(n);
+    const viewport = page.getViewport({ scale: 200 / 72 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    yield { n, ...canvasPixels(canvas) };
+  }
+}
+
+/** A page picture (a data URL, as the extension sends them), scaled up to about 200 dpi if smaller. */
+export async function imagePage(src, n) {
+  const bmp = await createImageBitmap(await (await fetch(src)).blob());
+  const scale = Math.max(1, 1700 / bmp.width);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  return { n, ...canvasPixels(canvas) };
 }
 
 function loadScript(src) {
@@ -46,7 +87,7 @@ async function docxText(buf) {
   return value;
 }
 
-/** @returns {Promise<{text: string, pages?: number, scanned?: number[]}>} */
+/** @returns {Promise<{text: string, pages?: number, pageTexts?: string[], scanned?: number[]}>} */
 export async function fileToText(file) {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf') || file.type === 'application/pdf') return pdfText(await file.arrayBuffer());

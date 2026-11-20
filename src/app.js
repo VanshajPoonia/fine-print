@@ -3,7 +3,8 @@ import { RULES_BY_ID } from './rules.js';
 import { PACK_BY_ID } from './crossborder.js';
 import { scan, withRules } from './scan.js';
 import { matches } from './segment.js';
-import { fileToText } from './extract.js';
+import { fileToText, pdfPages, imagePage } from './extract.js';
+import { readPage } from './ocr.js';
 import { parties, fill, sectionAt, counterProposal, combinedEmail } from './letters.js';
 import * as model from './model.js';
 
@@ -14,7 +15,7 @@ const info = (id) => BY_ID[id] ?? RULES_BY_ID[id] ?? PACK_BY_ID[id];
 const heads = fetch('data/heads.json').then((r) => r.json());
 let lawyer = null; // the CUAD sample's lawyer highlights, while its text is unchanged
 let lawyerText = null;
-let fromNote = ''; // where the extension got the contract, while its text is unchanged
+let fromNote = ''; // where the text came from (the extension, the scan reader), while it is unchanged
 
 $('#size').textContent = `${model.SIZE_MB} MB`;
 
@@ -41,10 +42,13 @@ const setText = (t) => {
 $('#text').addEventListener('input', () => {
   $('#scan').disabled = !$('#text').value.trim();
   fromNote = '';
+  dropScan();
   document.querySelectorAll('[data-sample]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
 });
 
 document.querySelectorAll('[data-sample]').forEach((b) => b.addEventListener('click', async () => {
+  dropScan();
+  fromNote = '';
   document.querySelectorAll('[data-sample]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   if (b.dataset.sample === 'cuad') {
     const c = await (await fetch('data/samples/cuad.json')).json();
@@ -65,24 +69,84 @@ drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
 $('#file').addEventListener('change', (e) => { if (e.target.files[0]) readFile(e.target.files[0]); });
 
-// Pictures of pages have no text to read. Only on-device ways to copy it are suggested.
+// Pictures of pages have no text to read. ClauseGuard's own reader can try, and the only other
+// ways it suggests run on the device too.
 const SCAN_HELP = 'If you have the original document, use that. Or copy the text with your device\'s own text recognition, such as Live Text in Preview on a Mac or in Photos on an iPhone, and paste it here.';
+const READER_NOTE = `ClauseGuard's text reader can try, on this device: it is in beta, downloads ${model.READER_MB} MB once, reads clean scans well and phone photos badly.`;
+
+let scans = null; // pages waiting to be read: { file, pageTexts, numbers } or { images }
+
+function offerScan(job, msg) {
+  scans = job;
+  $('#ocr').hidden = false;
+  $('#status').textContent = msg;
+}
+
+function dropScan() {
+  scans = null;
+  $('#ocr').hidden = true;
+}
 
 async function readFile(file) {
+  dropScan();
+  fromNote = '';
   $('#status').textContent = `Reading ${file.name}…`;
   try {
-    const { text: t, pages, scanned = [] } = await fileToText(file);
-    if (!t.trim() || (pages && scanned.length === pages)) {
-      throw new Error(pages ? `${file.name} is a scanned PDF: pictures of its pages, with no text inside. ClauseGuard cannot read pictures of text yet. ${SCAN_HELP}` : 'No text found in this file.');
-    }
-    setText(t);
+    const { text: t, pages, pageTexts, scanned = [] } = await fileToText(file);
     document.querySelectorAll('[data-sample]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-    const skipped = scanned.length ? ` Page${scanned.length > 1 ? 's' : ''} ${scanned.join(', ')} ${scanned.length > 1 ? 'look' : 'looks'} scanned, with no text inside, so ${scanned.length > 1 ? 'they were' : 'it was'} not read. ${SCAN_HELP}` : '';
-    $('#status').textContent = `${file.name}: ${t.split(/\s+/).length.toLocaleString()} words, read on this device.${skipped}`;
+    if (pages && scanned.length) {
+      const all = scanned.length === pages;
+      if (!all) setText(t);
+      const which = all
+        ? `${file.name} is a scanned PDF: pictures of its pages, with no text inside.`
+        : `${file.name}: page${scanned.length > 1 ? 's' : ''} ${scanned.join(', ')} ${scanned.length > 1 ? 'look' : 'looks'} scanned, with no text inside. The other pages were read.`;
+      offerScan({ file, pageTexts, numbers: scanned }, `${which} ${READER_NOTE} ${SCAN_HELP}`);
+      return;
+    }
+    if (!t.trim()) throw new Error('No text found in this file.');
+    setText(t);
+    $('#status').textContent = `${file.name}: ${t.split(/\s+/).length.toLocaleString()} words, read on this device.`;
   } catch (err) {
     $('#status').textContent = err.message;
   }
 }
+
+async function* pictures(list) {
+  for (const [i, src] of list.entries()) yield imagePage(src, i + 1);
+}
+
+$('#ocr').addEventListener('click', async () => {
+  const job = scans;
+  if (!job) return;
+  const bar = $('#bar');
+  $('#ocr').hidden = true;
+  $('#scan').disabled = true;
+  bar.hidden = false;
+  bar.value = 0;
+  try {
+    const recognise = await model.loadReader((p) => { bar.value = p; $('#status').textContent = `Downloading the text reader… ${Math.round(p * 100)}%`; });
+    const texts = [...(job.pageTexts ?? [])];
+    const total = job.images?.length ?? job.numbers.length;
+    const pages = job.images ? pictures(job.images) : pdfPages(await job.file.arrayBuffer(), job.numbers);
+    let k = 0;
+    for await (const page of pages) {
+      const before = k++;
+      $('#status').textContent = `Reading scanned page ${k} of ${total} on this device…`;
+      texts[page.n - 1] = await readPage(page, recognise, (p) => { bar.value = (before + p) / total; });
+    }
+    scans = null;
+    setText(texts.join('\n\n'));
+    fromNote = `${fromNote}Read ${total} scanned page${total > 1 ? 's' : ''} with the beta reader, which can misread words: check the text. `;
+    run();
+  } catch (err) {
+    console.error(err);
+    $('#status').textContent = `Could not read the scanned pages: ${err.message}`;
+    $('#ocr').hidden = false;
+    $('#scan').disabled = !$('#text').value.trim();
+  } finally {
+    bar.hidden = true;
+  }
+});
 
 // ---------- scanning ----------------------------------------------------------------------
 
@@ -136,7 +200,8 @@ function fromExtension(c) {
     fromNote = `${from}. `;
     run();
   } else {
-    $('#status').textContent = `${from}: the pages are pictures. ClauseGuard cannot read pictures of text yet. In DocuSign, use Other actions, then Download, and drop the PDF in here.`;
+    fromNote = `${from}. `;
+    offerScan({ images: c.images }, `${from}: ${c.images.length} page${c.images.length > 1 ? 's' : ''}, shown as pictures. ${READER_NOTE} Or, in DocuSign, use Other actions, then Download, and drop the PDF in here.`);
   }
 }
 
