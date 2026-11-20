@@ -44,7 +44,8 @@ function cuts(text) {
   // Sentence ends.
   for (const m of text.matchAll(/[.?!]["'”’)\]]*(?=\s+["'“‘(]?[A-Z0-9(])/g)) {
     const end = m.index + m[0].length;
-    const word = text.slice(0, m.index + 1).match(/(\S+)$/)[1].replace(/^["'“‘(]+/, '');
+    // Only the last word matters, so look back a little rather than from the start.
+    const word = text.slice(Math.max(0, m.index - 100), m.index + 1).match(/(\S+)$/)[1].replace(/^["'“‘(]+/, '');
     const bare = word.replace(/[.?!]+$/, '').toLowerCase();
     if (text[m.index] === '.' && (ABBREV.has(bare) || NUMBERING.test(word.replace(/\.$/, '')))) continue;
     at.add(end);
