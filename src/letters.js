@@ -3,6 +3,8 @@
 // (wording to propose) and `reply` (one line for the combined email), and this file fills
 // them in from the clause that was flagged and from the contract's own names for the parties.
 
+import { format } from './money.js';
+
 export const DISCLAIMER = '[Drafted by ClauseGuard. Not legal advice: check that it fits your situation, then delete this line before you send it.]';
 
 // The contract's own names for the client and for you, from its definitions:
@@ -57,6 +59,20 @@ export function quote(text, max = 300) {
   return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:]$/, '')}…`;
 }
 
+// What the percentage in a flag's suggested wording comes to on this contract's fee.
+const ON_FEE = {
+  killfee: (f) => `At 25%, that is up to ${format(f, 0.25)} on the ${format(f)} fee.`,
+  walkaway: (f) => `At 25%, that is up to ${format(f, 0.25)} on the ${format(f)} fee.`,
+  nolatefee: (f) => `At 1.5% a month, an unpaid ${format(f)} would carry ${format(f, 0.015)} for each month it is late.`,
+  penalty: (f) => `On the ${format(f)} fee, a 5% cap is ${format(f, 0.05)}.`,
+  slowpay: (f) => `A 30% deposit on the ${format(f)} fee is ${format(f, 0.3)}.`,
+  uncapped: (f) => `On this contract, that is ${format(f)}.`,
+  cap: (f) => `On this contract, that is ${format(f)}.`,
+};
+
+/** One sentence putting a flag's suggested numbers in money, or '' without a fee to go on. */
+export const onFee = (id, fee) => (fee && ON_FEE[id] ? ON_FEE[id](fee) : '');
+
 /** The one-line ask for the combined email, with the section number after its heading. */
 function line(item, names) {
   const sec = item.sec ?? sectionOf(item.seg);
@@ -69,8 +85,9 @@ function line(item, names) {
  * One email about one flagged clause.
  * @param {{f: {why: string, better: string, reply: string}, seg: string, note?: string, sec?: string}} item
  * @param {{client: string, me: string}} names
+ * @param {object} [fee]  the contract's fee, from contractFee in src/money.js
  */
-export function counterProposal(item, names) {
+export function counterProposal(item, names, fee) {
   const sec = item.sec ?? sectionOf(item.seg);
   const where = sec ? `section ${sec}` : 'this clause';
   return [
@@ -89,6 +106,7 @@ export function counterProposal(item, names) {
     'Would you be open to this wording instead?',
     '',
     `"${fill(item.f.better, names, item.note)}"`,
+    ...(onFee(item.f.id, fee) ? ['', onFee(item.f.id, fee)] : []),
     '',
     'Happy to talk it through on a call if that is easier.',
     '',
@@ -98,9 +116,9 @@ export function counterProposal(item, names) {
 }
 
 /** One email covering every item, numbered, each with the wording to propose. */
-export function combinedEmail(items, names) {
+export function combinedEmail(items, names, fee) {
   if (!items.length) return '';
-  const body = items.map((it, i) => `${i + 1}. ${line(it, names)}\n   Suggested wording: "${fill(it.f.better, names, it.note)}"`);
+  const body = items.map((it, i) => `${i + 1}. ${line(it, names)}\n   Suggested wording: "${fill(it.f.better, names, it.note)}"${onFee(it.f.id, fee) ? `\n   ${onFee(it.f.id, fee)}` : ''}`);
   return [
     DISCLAIMER,
     '',

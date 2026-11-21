@@ -5,7 +5,8 @@ import { scan, withRules } from './scan.js';
 import { matches } from './segment.js';
 import { fileToText, pdfPages, imagePage } from './extract.js';
 import { loadReader, TESSERACT } from './ocr.js';
-import { parties, fill, sectionAt, counterProposal, combinedEmail } from './letters.js';
+import { parties, fill, sectionAt, onFee, counterProposal, combinedEmail } from './letters.js';
+import { contractFee } from './money.js';
 import * as model from './model.js';
 
 const $ = (s) => document.querySelector(s);
@@ -247,6 +248,7 @@ function render(text, { segs, hits, model: modelHits = current?.model }, lawyerM
   }
 
   const names = parties(text);
+  const fee = contractFee(segs);
   $('#flags').innerHTML = cards.length ? cards.map((c, k) => {
     const top = c.hs[0];
     const seg = segs[top.seg];
@@ -262,6 +264,7 @@ function render(text, { segs, hits, model: modelHits = current?.model }, lawyerM
         <dt>What it means</dt><dd>${esc(c.f.means)}</dd>
         <dt>What to ask for</dt><dd>${esc(c.f.ask)}</dd>
         <dt>Wording to suggest</dt><dd class="better">${esc(fill(c.f.better, names, top.note))}</dd>
+        ${onFee(c.id, fee) ? `<dd class="small">${esc(onFee(c.id, fee))}</dd>` : ''}
       </dl>
       <div class="flag-foot">
         <label><input type="checkbox" data-reply="${c.id}" ${c.f.level === 'info' ? '' : 'checked'}> Include in my reply</label>
@@ -292,14 +295,14 @@ function render(text, { segs, hits, model: modelHits = current?.model }, lawyerM
 
   $('#report').hidden = false;
   if (scroll) $('#report').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  current = { text, segs, model: modelHits, cards, names, lawyerMarks };
+  current = { text, segs, model: modelHits, cards, names, fee, lawyerMarks };
 }
 
 $('#flags').addEventListener('click', (e) => {
   const counter = e.target.closest('[data-counter]');
   if (counter) {
     const c = current.cards.find((x) => x.id === counter.dataset.counter);
-    showEmail(`Counter-proposal: ${c.f.title.toLowerCase()}`, counterProposal(item(c), current.names));
+    showEmail(`Counter-proposal: ${c.f.title.toLowerCase()}`, counterProposal(item(c), current.names, current.fee));
     return;
   }
   const b = e.target.closest('[data-show]');
@@ -324,7 +327,7 @@ function showEmail(title, text) {
 $('#reply').addEventListener('click', () => {
   const chosen = new Set([...document.querySelectorAll('[data-reply]:checked')].map((x) => x.dataset.reply));
   const items = current.cards.filter((c) => chosen.has(c.id)).map(item);
-  showEmail('Your reply: one email for all of them', items.length ? combinedEmail(items, current.names) : 'Tick "Include in my reply" on the clauses you want to raise.');
+  showEmail('Your reply: one email for all of them', items.length ? combinedEmail(items, current.names, current.fee) : 'Tick "Include in my reply" on the clauses you want to raise.');
 });
 
 $('#copy').addEventListener('click', async () => {

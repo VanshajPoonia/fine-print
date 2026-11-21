@@ -127,7 +127,8 @@ Every card has **Write a counter-proposal**, and **Draft my reply** writes one e
 - the clause's section number, found by looking back to the nearest numbered clause when the flagged sentence is not the first one;
 - a quote of the clause, cut at a word boundary;
 - what the check found, such as "12 months after the contract ends, anywhere in the world";
-- the contract's own names for each side, taken from its definitions, such as "the Company" and "the Developer".
+- the contract's own names for each side, taken from its definitions, such as "the Company" and "the Developer";
+- what a suggested percentage comes to on the contract's fee, written the way the contract writes money: a 25% kill fee on "USD 14,000" is "USD 3,500", and 1.5% a month on "₹1,40,000" is "₹2,100". `src/money.js` reads USD, $, US$, INR, Rs., ₹, EUR, GBP and words like "US dollars" or "rupees", Indian grouping such as 1,40,000, and lakh and crore. It takes the total fee, not an insurance limit, a milestone or a rate per hour, and adds nothing when it cannot tell. Checked in `tests/unit.mjs`.
 
 Brackets like `[30]` mark numbers to choose. Every draft starts with a line saying it is not legal advice, to delete before sending.
 
@@ -193,6 +194,7 @@ src/flags.js       the 14 flags: which CUAD categories, what it means, what to a
 src/rules.js       the 3 pattern checks
 src/crossborder.js the 9 cross-border checks
 src/letters.js     counter-proposal emails from templates
+src/money.js       amounts of money, read and written the contract's way
 src/ocr.js         reading scanned pages with Tesseract
 src/extract.js     PDF and DOCX to text, in the browser, and which PDF pages are scanned
 src/model.js       EmbeddingGemma in the browser (WebGPU, or WASM with the fallback build)

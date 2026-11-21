@@ -8,7 +8,8 @@ import { PACK } from '../src/crossborder.js';
 import { ruleHits, supersede, rulesFor, withRules } from '../src/scan.js';
 import { scannedPages } from '../src/extract.js';
 import { TESSERACT, reader, joinLines } from '../src/ocr.js';
-import { parties, fill, quote, sectionAt, counterProposal, combinedEmail, DISCLAIMER } from '../src/letters.js';
+import { parties, fill, quote, sectionAt, onFee, counterProposal, combinedEmail, DISCLAIMER } from '../src/letters.js';
+import { amounts, format, contractFee } from '../src/money.js';
 
 let failed = 0;
 const check = (name, ok, detail = '') => {
@@ -147,6 +148,28 @@ check('every flag and rule has the parts an email needs', all.every((f) => f.why
   const items = withRules(xbText, xbSegs, [], { crossBorder: true }).slice(0, 3).map((h) => ({ f: PACK.find((r) => r.id === h.flag) ?? RULES_BY_ID[h.flag], seg: xbSegs[h.seg].text, note: h.note }));
   const combined = combinedEmail(items, parties(xbText));
   check('the combined email numbers every item and suggests wording for each', [1, 2, 3].every((i) => combined.includes(`\n${i}. `)) && combined.split('Suggested wording:').length === 4 && combined.startsWith(DISCLAIMER), combined);
+}
+
+// --- money in the emails ----------------------------------------------------------------
+
+{
+  const one = (t, share) => format(amounts(t)[0], share);
+  check('25% of "USD 14,000" is "USD 3,500"', one('a fixed fee of USD 14,000', 0.25) === 'USD 3,500');
+  check('Indian grouping is kept: 25% of "₹1,40,000" is "₹35,000", 1.5% is "₹2,100"', one('₹1,40,000', 0.25) === '₹35,000' && one('₹1,40,000', 0.015) === '₹2,100');
+  check('lakh is read: "Rs. 2.5 lakh" is 2,50,000', amounts('Rs. 2.5 lakh')[0].value === 250000 && one('Rs. 2.5 lakh', 0.25) === 'Rs. 62,500');
+  check('INR and rupees are written in Indian grouping', one('INR 1,50,000', 1) === 'INR 1,50,000' && one('a fee of 3,00,000 rupees', 0.25) === '75,000 rupees');
+  check('"$", "US$", "EUR" and "US dollars" stay as the contract wrote them', one('$18,000', 0.25) === '$4,500' && one('US$4,000', 0.25) === 'US$1,000' && one('EUR 7,200', 0.25) === 'EUR 1,800' && one('14,000 US dollars', 0.25) === '3,500 US dollars');
+  check('cents appear only when a share needs them', one('USD 1,234.50', 0.25) === 'USD 308.63' && one('USD 1,000', 0.5) === 'USD 500');
+  const fee = (t) => contractFee(segment(t)) && format(contractFee(segment(t)));
+  check('the contract fee is the total, not an insurance limit or a milestone', fee(freelance) === 'USD 14,000' && fee(xbText) === '$18,000', `${fee(freelance)} ${fee(xbText)}`);
+  check('a rate per hour or per month is not taken as the fee', fee('The Company shall pay Consultant $85 per hour, invoiced monthly. The retainer is INR 50,000 per month.') === null);
+  check('no amount, no sentence', onFee('killfee', null) === '' && onFee('ipearly', amounts('USD 100')[0]) === '');
+  const segs = segment(freelance);
+  const kill = counterProposal({ f: PACK.find((r) => r.id === 'killfee'), seg: segs.find((x) => /pay only for Deliverables accepted/.test(x.text)).text }, parties(freelance), contractFee(segs));
+  check('a kill-fee email works out 25% of the contract\'s fee', kill.includes('At 25%, that is up to USD 3,500 on the USD 14,000 fee.'), kill);
+  const indian = 'The Agency will pay the Freelancer a fixed fee of ₹1,40,000 for the website. Invoices are payable within 30 days.';
+  const late = combinedEmail([{ f: PACK.find((r) => r.id === 'nolatefee'), seg: indian }], parties(indian), contractFee(segment(indian)));
+  check('a late-fee email does the same in rupees', late.includes('an unpaid ₹1,40,000 would carry ₹2,100 for each month it is late'), late);
 }
 
 // --- browser extension ----------------------------------------------------------------
