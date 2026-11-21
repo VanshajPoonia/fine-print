@@ -3,14 +3,15 @@
 //   node tests/crossborder.mjs
 //
 // 1. Hand-written clauses (tests/fixtures/crossborder.mjs): the dev set the rules were
-//    written against, and a fresh set written afterwards.
+//    written against, and a fresh set written afterwards. Then payment clauses in Indian
+//    freelance phrasing: a set the rules were tuned on and a set only ever measured.
 // 2. Two whole contracts: the app's cross-border sample, and a fair one that should trip nothing.
 // 3. CUAD's 102 held-out contracts, for the three rules a CUAD category covers. CUAD is
 //    US commercial contracts, so these numbers say how well a rule finds the clause, not
 //    whether a freelancer should worry about it.
 
 import { readFileSync } from 'node:fs';
-import { DEV, FRESH } from './fixtures/crossborder.mjs';
+import { DEV, FRESH, INDIA_TUNE, INDIA_REPORT } from './fixtures/crossborder.mjs';
 import { PACK, PACK_BY_ID } from '../src/crossborder.js';
 import { segment, matches } from '../src/segment.js';
 import { ruleHits } from '../src/scan.js';
@@ -57,6 +58,27 @@ for (const [id, d] of Object.entries(dev)) {
 // The fresh set gets a floor, not a target.
 if (sum(fresh, 'found') / sum(fresh, 'fire') < 0.8) fail('fresh set: under 80% found');
 if (sum(fresh, 'alarms') / sum(fresh, 'pass') > 0.1) fail('fresh set: over 10% false alarms');
+
+console.log('\n1b. Payment checks in Indian freelance phrasing (Upwork-style terms, agency subcontracts)\n');
+console.log(`${'rule'.padEnd(12)} ${'tune found'.padStart(11)} ${'tune false'.padStart(11)} ${'report found'.padStart(13)} ${'report false'.padStart(13)}`);
+const tune = score(INDIA_TUNE);
+const report = score(INDIA_REPORT);
+for (const id of Object.keys(INDIA_TUNE)) {
+  const a = tune[id], b = report[id];
+  console.log(`${id.padEnd(12)} ${`${a.found}/${a.fire}`.padStart(11)} ${`${a.alarms}/${a.pass}`.padStart(11)} ${`${b.found}/${b.fire}`.padStart(13)} ${`${b.alarms}/${b.pass}`.padStart(13)}`);
+}
+console.log(`${'all'.padEnd(12)} ${`${sum(tune, 'found')}/${sum(tune, 'fire')}`.padStart(11)} ${`${sum(tune, 'alarms')}/${sum(tune, 'pass')}`.padStart(11)} ${`${sum(report, 'found')}/${sum(report, 'fire')}`.padStart(13)} ${`${sum(report, 'alarms')}/${sum(report, 'pass')}`.padStart(13)}`);
+for (const [id, r] of Object.entries(report)) {
+  for (const t of r.missed) console.log(`  report MISSED ${id}: ${t}`);
+  for (const t of r.wrong) console.log(`  report EXTRA  ${id}: ${t}`);
+}
+// The tune set is a regression check. The report set, never tuned on, gets a floor.
+for (const [id, r] of Object.entries(tune)) {
+  for (const t of r.missed) fail(`Indian tune ${id} missed: ${t}`);
+  for (const t of r.wrong) fail(`Indian tune ${id} false alarm: ${t}`);
+}
+if (sum(report, 'found') / sum(report, 'fire') < 0.6) fail('Indian report set: under 60% found');
+if (sum(report, 'alarms') / sum(report, 'pass') > 0.1) fail('Indian report set: over 10% false alarms');
 
 console.log('\n2. Whole contracts\n');
 const ids = (file) => {

@@ -349,3 +349,204 @@ export const FRESH = {
     ],
   },
 };
+
+// Payment checks in Indian freelance phrasing: Upwork-style terms, agency subcontracts,
+// rupees and lakh, TDS. Written by hand, no real contracts. The rules may be tuned on
+// INDIA_TUNE. INDIA_REPORT is only ever measured.
+export const INDIA_TUNE = {
+  nodeadline: {
+    fire: [
+      'The Client will release payment through Upwork once the milestone is approved.',
+      'Remuneration: Rs. 45,000 for the complete website, payable on completion of the work to the satisfaction of the Agency.',
+      'The Agency shall pay the Consultant a consolidated amount of INR 60,000 per month against monthly invoices.',
+      'Payment of the professional fee of ₹1,20,000 shall be made in two tranches as mutually agreed.',
+      'The fees for the assignment of INR 35,000 shall be paid by bank transfer (NEFT/RTGS) to the account of the Freelancer.',
+    ],
+    pass: [
+      'Payment of the professional fee of ₹1,20,000 shall be released within 7 working days of approval of each tranche.',
+      'The Client will fund the milestone in escrow before work begins, and Upwork releases it on approval or after 14 days.',
+      'Invoices raised by the Freelancer for the fee of INR 30,000 shall be cleared within 15 days of receipt.',
+      'This NDA covers all information shared during discussions about the project.',
+      'The Agency shall pay INR 40,000 within ten (10) days of the end of each month.',
+    ],
+  },
+  nolatefee: {
+    fire: [
+      'The Agency shall clear all invoices within 30 days of receipt.',
+      'Payment shall be released within 7 working days of approval of the deliverables.',
+      'The Client will pay each invoice within 15 days through Wise or PayPal.',
+      'Invoices shall be paid within forty five (45) days of submission, subject to TDS as applicable.',
+      'All payments are due within 10 days from the date of the invoice raised by the Consultant.',
+    ],
+    pass: [
+      'Invoices are payable within 15 days. Delayed payments shall attract interest at 18% per annum.',
+      'Payment is due within 7 days. If payment is delayed beyond 15 days, the Freelancer may stop work.',
+      'The Client will pay within 30 days, failing which a late payment charge of 2% per month will apply.',
+      'Invoices are due within 14 days, and any delay will carry interest at 1.5% per month on the outstanding amount.',
+      'Payment within 10 days of invoice. Work will be put on hold if any invoice remains unpaid after the due date.',
+    ],
+  },
+  realise: {
+    fire: [
+      'The Agency shall pay the Consultant within 15 days of realisation of payment from the End Client.',
+      'Payment to the Sub-contractor is subject to receipt of the corresponding payment by the Company from its overseas client.',
+      'The Company shall retain 10% of every invoice as security, refundable after one year of go-live.',
+      'The balance 40% shall be paid upon the app going live on the Play Store.',
+      'The Client will pay the Freelancer once the Client receives funding from its investors.',
+    ],
+    pass: [
+      'The Agency shall pay the Consultant within 15 days of the invoice date, irrespective of payment from the End Client.',
+      'Invoices shall be paid within 30 days of receipt.',
+      'The Company may retain a copy of the deliverables for its records.',
+      'The Client shall pay 30% as advance and 70% within 7 days of final delivery.',
+      'No security deposit is payable under this Agreement.',
+    ],
+  },
+  currency: {
+    fire: [
+      'The Client shall pay the Freelancer $1,500 for the landing page.',
+      'The fee of 50,000 shall be paid in two parts.',
+      'Payments will be converted to INR at the rate decided by the Client\'s bank on the date of transfer.',
+      'The Consultant will receive $40 per hour for all approved hours.',
+      'Remuneration: 2,500 per article, paid monthly.',
+    ],
+    pass: [
+      'The Client shall pay the Freelancer USD 1,500 for the landing page.',
+      'The fee of INR 50,000 shall be paid in two parts.',
+      'The fee is Rs. 25,000 per month.',
+      'All amounts are in euros and will be paid in euros.',
+      'The rate is US$40 per hour.',
+    ],
+  },
+  fees: {
+    fire: [
+      'All PayPal charges and conversion fees shall be borne by the Freelancer.',
+      'Payments shall be made after deducting bank charges levied by the remitting bank.',
+      'Upwork\'s service fee will be deducted from each payment to the Freelancer.',
+      'The Client may withhold taxes from payments to the Consultant as required under US law.',
+      'Any foreign exchange charges shall be to the account of the Developer.',
+    ],
+    pass: [
+      'TDS at the applicable rate under section 194J shall be deducted from each payment.',
+      'The Client will bear all bank and transfer charges on its side.',
+      'The Freelancer is responsible for paying GST, if applicable.',
+      'No tax will be withheld, as the Consultant has provided Form 10F and a tax residency certificate.',
+      'Payments will be sent by SWIFT with charges set to OUR, so the Developer receives the full amount.',
+    ],
+  },
+  killfee: {
+    fire: [
+      'If the project is cancelled by the Client, no further payment shall be due to the Freelancer.',
+      'In case of termination, the Agency shall pay only for the milestones approved till the date of termination.',
+      'On termination for any reason, the Consultant shall not be entitled to any compensation for the work in progress.',
+      'The Client may close the contract on Upwork at any time, and milestones that are not funded will not be paid.',
+      'If the End Client cancels the project, the Agency will owe nothing to the Sub-contractor.',
+    ],
+    pass: [
+      'If the Client cancels the project, it will pay for all work done till the date of cancellation.',
+      'On termination, the Agency shall pay for the work completed and a cancellation fee of 25% of the remaining fee.',
+      'Either party may terminate this Agreement with 15 days\' written notice.',
+      'Termination shall not affect payment for work already delivered.',
+      'If the Freelancer terminates without cause, the advance shall be refunded.',
+    ],
+  },
+};
+
+export const INDIA_REPORT = {
+  nodeadline: {
+    fire: [
+      'The Company shall pay the Developer a lump sum of Rs. 2.5 lakh for the mobile application.',
+      'Payment will be made by the End Client to the Agency, and the Agency will pass the fee of INR 90,000 on to the Sub-contractor.',
+      'The Freelancer will raise an invoice for each milestone, and the Client will pay it through the platform.',
+      'The professional charges of USD 2,500 shall be remitted to the Consultant\'s bank account in India.',
+      'Fees: INR 75,000 for the logo and brand guidelines, to be paid after final delivery.',
+    ],
+    pass: [
+      'The professional charges of USD 2,500 shall be remitted within 21 days from the date of invoice.',
+      'Each invoice is due and payable within seven days of its date, by wire transfer.',
+      'The Client shall pay 50% of the fee of ₹80,000 in advance and the balance within 10 days of delivery.',
+      'Both parties agree to keep the source code confidential for two years.',
+      'Payment of INR 20,000 for every approved milestone shall be made not later than the 5th of the following month.',
+    ],
+  },
+  nolatefee: {
+    fire: [
+      'The Company shall make payment within 30 days of receipt of a valid tax invoice.',
+      'The Client agrees to settle each milestone payment within 5 business days of approval.',
+      'Invoices raised on the 1st of each month shall be paid by the 10th of the same month.',
+      'Payment for the services shall be made within twenty one (21) days of the invoice, by SWIFT transfer.',
+      'The Agency will release payment to the Sub-contractor within 45 days of receiving each invoice.',
+    ],
+    pass: [
+      'Invoices are payable within 30 days. Any delayed payment shall carry interest at 24% per annum till the date of payment.',
+      'Payment is due within 15 days. A late fee of INR 500 per week will be charged on overdue invoices.',
+      'The Client shall pay within 7 days, and the Freelancer may withhold delivery of the final files until payment is received.',
+      'Payment is due within 14 days of invoice. Overdue amounts attract interest at 2% per month.',
+      'Invoices are to be cleared within 21 days, after which the Developer may suspend the services.',
+    ],
+  },
+  realise: {
+    fire: [
+      'Payments to the Freelancer shall be made only after the Agency has received the amount from the client abroad.',
+      'Ten percent (10%) of the fees shall be held back until the end of the twelve-month warranty period.',
+      'The final payment shall become due on the commercial launch of the platform.',
+      'The Prime Vendor shall pay the Resource within 10 days of the Prime Vendor\'s receipt of payment from the Customer.',
+      'Fees shall be payable within one year of the invoice date.',
+    ],
+    pass: [
+      'The Prime Vendor shall pay the Resource within 30 days of each invoice, whether or not the Customer has paid the Prime Vendor.',
+      'Fees shall be payable within ninety days of the invoice date.',
+      'The Agency shall pay the full fee on delivery.',
+      'The Company shall retain all records for seven years as required by law.',
+      'Payment shall be made through Upwork within 14 days after the Client approves the milestone.',
+    ],
+  },
+  currency: {
+    fire: [
+      'The Company will pay a monthly retainer of $2,000 to the Designer.',
+      'Payment of 1,20,000 will be made on completion.',
+      'Amounts invoiced in USD will be paid in INR at the exchange rate applied by the Company\'s bank.',
+      'The fixed fee for the project is $9,000, payable in three milestones.',
+      'The Consultant shall be paid 800 per hour of work logged.',
+    ],
+    pass: [
+      'The Company will pay a monthly retainer of USD 2,000 to the Designer.',
+      'Payment of ₹1,20,000 will be made on completion.',
+      'The fee is EUR 3,000 and will be invoiced and paid in EUR.',
+      'The Consultant shall be paid INR 800 per hour of work logged.',
+      'Fees are stated in Indian Rupees.',
+    ],
+  },
+  fees: {
+    fire: [
+      'Transfer charges, including intermediary bank charges, shall be borne by the Resource.',
+      'The Company shall deduct withholding tax from every payment to the Freelancer.',
+      'Amounts will be paid net of PayPal fees.',
+      'Platform charges of 10% will be deducted from the fees payable to the Writer.',
+      'Bank charges for the remittance will be deducted from the amount paid to the Consultant.',
+    ],
+    pass: [
+      'Each party shall bear the charges of its own bank.',
+      'Income tax will be deducted at source (TDS) as per Indian law and a Form 16A will be issued.',
+      'The Client shall pay the full invoice amount and bear all transfer fees.',
+      'The Consultant shall pay its own taxes in India.',
+      'Wise fees will be paid by the Client.',
+    ],
+  },
+  killfee: {
+    fire: [
+      'Upon termination of this Agreement, no amount shall be payable for any incomplete deliverable.',
+      'If the End Client terminates the project, the Sub-contractor shall be paid only for work accepted by the End Client.',
+      'The Company may cancel the assignment at its discretion without any liability to pay the Consultant.',
+      'In the event of early termination, the Writer forfeits all fees for unpublished articles.',
+      'On termination, the Client shall have no obligation to pay for partially completed work.',
+    ],
+    pass: [
+      'On termination, the Client shall pay for all work done up to the date of termination on a pro-rata basis.',
+      'If the project is cancelled midway, a kill fee of 30% of the balance shall be payable along with charges for work done.',
+      'The Agency may terminate this Agreement for breach after giving 30 days to cure.',
+      'Any payment due on the date of termination shall be paid within 15 days.',
+      'Termination will not affect the Consultant\'s right to be paid for services already rendered.',
+    ],
+  },
+};

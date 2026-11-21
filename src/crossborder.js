@@ -20,12 +20,12 @@ const each = (segs, test) => segs.flatMap((s, i) => {
 });
 
 const PAYS = /\b(?:invoice[sd]?|fees?|payments?|pay|paid|payable|compensation|remuneration)\b/i;
-const MONEY = /(?:[$€£₹]\s?\d|\b(?:USD|EUR|GBP|INR|US\$)\s?\d|\d[\d,.]*\s?(?:dollars|euros?|pounds|rupees|USD|EUR|GBP|INR)\b)/i;
-const PAYING = /\b(?:shall|will|must|agrees?\s+to)\s+(?:\w+\s+)?(?:pay|settle)\b|\b(?:pays|payable|paid|due|remit|remits|receive|receives|invoiced|billed|charged)\b|\bpayment\s+(?:of|for|is|will|shall)\b|\b(?:fees?|rates?|retainer|compensation)\s+(?:is|are|of|will\s+be|shall\s+be)\b/i;
-const CURRENCY = /[$€£₹]|\b(?:USD|EUR|GBP|INR|CAD|AUD|SGD|CHF|AED|dollars?|euros?|pounds?\s+sterling|rupees?|sterling)\b/i;
-const FEE = '(?:(?:bank|wire|transfer|transaction|remittance|conversion|currency|platform|paypal|payment|processing|intermediary|swift|foreign\\s+exchange)\\s+(?:or\\s+|and\\s+|\\/\\s*)?)+(?:charges?|fees?|costs?)\\b';
+const MONEY = /(?:[$€£₹]\s?\d|\b(?:USD|EUR|GBP|INR|US\$|Rs\.?)\s?\d|\d[\d,.]*\s?(?:dollars|euros?|pounds|rupees|USD|EUR|GBP|INR)\b)/i;
+const PAYING = /\b(?:shall|will|must|agrees?\s+to)\s+(?:\w+\s+)?(?:pay|settle|clear)\b|\b(?:release|releases|cleared)\b|\b(?:pays|payable|paid|due|remit|remits|receive|receives|invoiced|billed|charged)\b|\bpayment\s+(?:of|for|is|will|shall)\b|\b(?:fees?|rates?|retainer|compensation)\s+(?:is|are|of|will\s+be|shall\s+be)\b/i;
+const CURRENCY = /[$€£₹]|\bRs\.?\s?\d|\b(?:USD|EUR|GBP|INR|CAD|AUD|SGD|CHF|AED|dollars?|euros?|pounds?\s+sterling|rupees?|sterling)\b/i;
+const FEE = '(?:(?:bank|wire|transfer|transaction|remittance|conversion|currency|platform|paypal|payment|processing|service|upwork\\S?s|fiverr\\S?s|platform\\S?s|intermediary|swift|foreign\\s+exchange)\\s+(?:or\\s+|and\\s+|\\/\\s*)?)+(?:charges?|fees?|costs?)\\b';
 const DEADLINE = /\bnet\s*\(?\d{1,3}\)?(?!\s*%)|\bwithin\s+[^.;]{0,40}?\b(?:days?|weeks?|months?)\b|\b\d{1,3}\)?\s+(?:calendar\s+|business\s+)?days\s+(?:of|after|from|following)\b|\b(?:due|payable|paid)\s+(?:up)?on\s+receipt\b|\b(?:in\s+advance|before\s+work\s+(?:starts|begins))\b|\b(?:on\s+or\s+before|no\s+later\s+than|not\s+later\s+than)\b|\bby\s+the\s+\d{1,2}(?:st|nd|rd|th)\b|\bprior\s+to\s+the\s+\w+\s+(?:business\s+|calendar\s+)?day\b|\b(?:payable|due|paid)\s+within\b|\bwithin\s+\[/i;
-const LATE = /\blate\s+(?:payment\s+)?(?:fees?|charges?|interest)|\binterest\b[^.;]{0,80}\b(?:overdue|late|past\s+due|unpaid|outstanding)|\b(?:overdue|late|past\s+due|unpaid|outstanding)\b[^.;]{0,80}\b(?:interest|late\s+fee|surcharge)|\b(?:service|finance)\s+charge|\b(?:bears?|accrues?|carry|carries)\s+interest\b|\bwith\s+(?:accrued\s+)?interest\b|\b(?:suspend|stop|pause)\s+(?:work|the\s+services|services|performance)/i;
+const LATE = /\blate\s+(?:payment\s+)?(?:fees?|charges?|interest)|\binterest\b[^.;]{0,80}\b(?:overdue|late|past\s+due|unpaid|outstanding)|\b(?:overdue|late|past\s+due|unpaid|outstanding)\b[^.;]{0,80}\b(?:interest|late\s+fee|surcharge)|\b(?:service|finance)\s+charge|\b(?:bears?|accrues?|carry|carries|attracts?)\s+interest\b|\b(?:delayed|late|overdue|unpaid)\s+payments?\b[^.;]{0,80}\b(?:interest|charges?|surcharge)\b|\bput\s+on\s+hold\b|\bwith\s+(?:accrued\s+)?interest\b|\b(?:suspend|stop|pause)\s+(?:work|the\s+services|services|performance)/i;
 
 // Where the payment terms are, so absence checks have a clause to point at.
 // Scored, so the card quotes a clause about paying fees, not a definition, a table of contents
@@ -77,7 +77,7 @@ export const PACK = [
     reply: 'Payment date: could we add that each invoice is paid within [15] days of the invoice date?',
     why: 'At the moment the agreement does not say when invoices are due, and a clear date keeps things simple on both sides.',
     find(text, segs) {
-      if (!PAYS.test(text) || !(MONEY.test(text) || /\b(?:invoices?|rates?|retainer)\b/i.test(text))) return [];
+      if (!PAYS.test(text) || !(MONEY.test(text) || /\b(?:invoices?|rates?|retainer|milestones?)\b/i.test(text))) return [];
       if (segs.some((s) => PAYS.test(s.text) && DEADLINE.test(s.text))) return [];
       return at(paymentClause(segs), { note: 'no due date' });
     },
@@ -110,9 +110,9 @@ export const PACK = [
     why: 'Indian rules require me to receive payment for exported services within nine months of the invoice, so I need a due date that does not depend on other events.',
     find(text, segs) {
       return each(segs, (t) => {
-        if (/\bpay[- ](?:when|if)[- ]paid\b|\b(?:upon|after|following|until|within\s+[^.;]{0,30}\s+(?:of|after))\s+(?:its\s+|the\s+(?:company|client|customer)['’]s\s+)?receipt\s+of\s+(?:the\s+)?(?:corresponding\s+|related\s+)?payments?\s+from\s+(?:its|the|their)\s+(?:own\s+)?(?:client|customer|end[- ]client)s?\b|\bonly\s+(?:after|once|when|if)\s+(?:the\s+)?(?:company|client|customer)\s+(?:has\s+been|is)\s+paid\b|\b(?:receives|has\s+received|is\s+paid)\s+(?:payment\s+)?(?:from|by)\s+(?:its|the|their)\s+(?:own\s+)?(?:client|customer|end[- ]client|distributor)s?\b/i.test(t)) return { note: 'paid when they are paid' };
+        if (/\bpay[- ](?:when|if)[- ]paid\b|\b(?:upon|after|following|until|within\s+[^.;]{0,30}\s+(?:of|after))\s+(?:its\s+|the\s+(?:company|client|customer)['’]s\s+)?receipt\s+of\s+(?:the\s+)?(?:corresponding\s+|related\s+)?payments?\s+from\s+(?:its|the|their)\s+(?:own\s+)?(?:client|customer|end[- ]client)s?\b|\bonly\s+(?:after|once|when|if)\s+(?:the\s+)?(?:company|client|customer)\s+(?:has\s+been|is)\s+paid\b|\b(?:receives|has\s+received|is\s+paid)\s+(?:payment\s+)?(?:from|by)\s+(?:its|the|their)\s+(?:own\s+)?(?:client|customer|end[- ]client|distributor)s?\b|\breali[sz](?:ation|ed)\s+of\s+(?:the\s+)?(?:corresponding\s+)?payments?\s+(?:\w+\s+){0,4}from\b|\breceipt\s+of\s+(?:the\s+)?(?:corresponding\s+|related\s+)?payments?\s+by\s+[^.;]{0,40}?\bfrom\s+(?:its|the|their)\s+(?:own\s+|overseas\s+|foreign\s+)?(?:client|customer|end[- ]client)s?\b/i.test(t)) return { note: 'paid when they are paid' };
         if (PAYS.test(t) && /\b(?:retain|retains|retained|withhold|withholds|withheld|hold\s+back|holds\s+back)\b[^.;]{0,60}?\b\d{1,2}\s*\)?\s*(?:%|percent)/i.test(t)) return { note: 'part of the fee held back' };
-        if (/\b(?:payable|paid|due)\s+(?:only\s+)?(?:up)?on\s+(?:the\s+)?(?:public\s+|official\s+|commercial\s+)?(?:(?:product|app|website|site|campaign)\s+)?(?:launch|go-?live|publication|release|first\s+sale)\b|\b(?:payable|paid|due)\s+(?:only\s+)?(?:(?:up)?on|when|after|once)\s+(?:the\s+)?(?:company|client|customer)(?:['’]s\s+receipt\s+of|\s+(?:closes|raises|receives|completes))\s+(?:its\s+|a\s+|the\s+)?(?:[a-z]+\s+){0,2}(?:funding|financing|investment|revenue|round)/i.test(t)) return { note: 'paid on an event they control' };
+        if (/\b(?:payable|paid|due)\s+(?:only\s+)?(?:up)?on\s+(?:the\s+)?(?:public\s+|official\s+|commercial\s+)?(?:(?:product|app|website|site|campaign)\s+)?(?:launch|go-?live|publication|release|first\s+sale)\b|\b(?:payable|paid|due)\s+(?:only\s+)?(?:(?:up)?on|when|after|once)\s+(?:the\s+)?(?:company|client|customer)(?:['’]s\s+receipt\s+of|\s+(?:closes|raises|receives|completes))\s+(?:its\s+|a\s+|the\s+)?(?:[a-z]+\s+){0,2}(?:funding|financing|investment|revenue|round)|\b(?:payable|paid|due|released)\s+(?:only\s+)?(?:up)?on\s+(?:the\s+)?(?:\w+\s+){0,3}(?:going|goes)\s+live\b|\b(?:once|when|after|if)\s+(?:the\s+)?(?:company|client|customer)\s+(?:receives|raises|closes|gets)\s+(?:\w+\s+){0,2}(?:funding|financing|investment)\b/i.test(t)) return { note: 'paid on an event they control' };
         if (!PAYS.test(t)) return null;
         const d = t.match(/\bnet\s*\(?(\d{3})\)?|\bwithin\s+((?:[a-z-]+(?:\s+(?:hundred(?:\s+and)?|and)\s+[a-z-]+)*\s*)?\(?\d{0,3}\)?)\s*(?:calendar\s+|business\s+|working\s+)?(days?|months?)\b/i);
         if (!d) return null;
@@ -193,14 +193,15 @@ export const PACK = [
     reply: 'Currency: could we state all fees in [USD] and pay invoices in that currency?',
     why: 'Naming the currency avoids any doubt about {note}.',
     find(text, segs) {
-      const rate = each(segs, (t) => (/\b(?:exchange\s+|conversion\s+)?rate\s+(?:determined|selected|chosen|set|used|applied|quoted)\s+by\s+(?:the\s+)?(?:company|client|customer|agency|its\s+bank)|\bat\s+the\s+(?:company|client|customer|agency)['’]s\s+(?:then[- ]prevailing\s+|prevailing\s+|standard\s+)?(?:exchange|conversion)\s+rate/i.test(t) && /\b(?:conver|exchange|currenc|euros?|dollars?|rupees?|pounds?|INR|EUR|USD|GBP)/i.test(t) ? { note: 'the exchange rate they choose' } : null));
+      const rate = each(segs, (t) => (/\b(?:exchange\s+|conversion\s+)?rate\s+(?:determined|selected|chosen|set|used|applied|quoted|decided|fixed)\s+by\s+(?:the\s+)?(?:(?:company|client|customer|agency)(?:['’]s\s+bank)?|its\s+bank)|\bat\s+the\s+(?:company|client|customer|agency)['’]s\s+(?:then[- ]prevailing\s+|prevailing\s+|standard\s+)?(?:exchange|conversion)\s+rate/i.test(t) && /\b(?:conver|exchange|currenc|euros?|dollars?|rupees?|pounds?|INR|EUR|USD|GBP)/i.test(t) ? { note: 'the exchange rate they choose' } : null));
       if (rate.length) return rate;
       if (!CURRENCY.test(text)) {
         const s = segs.find((x) => PAYS.test(x.text) && /\b\d{1,3}(?:,\d{2,3})+(?:\.\d+)?\b|\b\d{4,}\b(?!\s*(?:%|percent))/.test(x.text.replace(/\b(?:19|20)\d{2}\b/g, '')));
         if (s) return at(s, { note: 'no currency named' });
       }
       if (/\$\s?\d/.test(text) && !/\b(?:USD|CAD|AUD|SGD|NZD|HKD)\b|\b(?:US|U\.S\.|C|A|S|NZ|HK)\s?\$|\b(?:U\.S\.|US|United\s+States|American|Canadian|Australian|Singapore)\s+dollars?\b/i.test(text)) {
-        return at(paymentClause(segs.filter((s) => /\$\s?\d/.test(s.text))), { note: 'which dollars' });
+        const dollars = segs.filter((s) => /\$\s?\d/.test(s.text));
+        return at(paymentClause(dollars) ?? dollars.find((s) => /\bper\s+(?:hour|day|week|month)\b|\b(?:rates?|retainer|fees?)\b/i.test(s.text) && !/\b(?:expenses?|reimburse\w*|insurance)\b/i.test(s.text)), { note: 'which dollars' });
       }
       return [];
     },
@@ -217,7 +218,7 @@ export const PACK = [
     why: 'As written, {note} would come out of the fee, and on an international payment that adds up quickly.',
     find(text, segs) {
       return each(segs, (t) => {
-        if (new RegExp(`${FEE}[^.;]{0,80}?\\b(?:borne|paid|deducted|absorbed|for\\s+the\\s+account)\\s+(?:by|of|from)\\s+(?:the\\s+)?(?:contractor|consultant|freelancer|service\\s+provider|supplier|vendor|developer|designer|you|payee)\\b|${FEE}[^.;]{0,40}?\\bdeducted\\s+from\\s+(?:the\\s+)?(?:amounts?|payments?|fees?|invoices?)|\\b(?:net\\s+of|less)\\s+(?:all\\s+|any\\s+)?(?:applicable\\s+)?${FEE}`, 'i').test(t)) return { note: 'transfer fees' };
+        if (new RegExp(`${FEE}[^.;]{0,80}?\\b(?:borne|paid|deducted|absorbed|(?:for|to)\\s+the\\s+account)\\s+(?:by|of|from)\\s+(?:the\\s+)?(?:contractor|consultant|freelancer|service\\s+provider|supplier|vendor|developer|designer|you|payee)\\b|${FEE}[^.;]{0,40}?\\bdeducted\\s+from\\s+(?:the\\s+|each\\s+|every\\s+|any\\s+)?(?:amounts?|payments?|fees?|invoices?)|\\b(?:after|by)\\s+deducting\\s+(?:any\\s+|all\\s+)?${FEE}|\\b(?:net\\s+of|less)\\s+(?:all\\s+|any\\s+)?(?:applicable\\s+)?${FEE}`, 'i').test(t)) return { note: 'transfer fees' };
         if (/["”]\s*(?:shall\s+)?means?\b|\bhas\s+the\s+meaning\b|\bfree\s+(?:and\s+clear\s+)?of\s+(?:any\s+)?withholding|\brecover(?:y|ing)?\b/i.test(t)) return null;
         if (/(?<!\b(?:not|never)\s)\b(?:deduct|withhold)(?:s|ed|ing)?\b(?:\s+and\s+(?:deduct|withhold)\w*)?\s+(?:from\s+(?:any\s+|each\s+)?(?:payments?|amounts?)\s+)?(?:any\s+|all\s+|such\s+)?(?:applicable\s+)?(?:withholding\s+|income\s+)?tax(?:es)?\b(?:[^.;]{0,60}\b(?:from|on)\s+(?:any\s+|each\s+|the\s+)?(?:payments?|amounts?|invoices?|fees?))?|\bsubject\s+to\s+(?:any\s+)?(?:applicable\s+)?withholding\s+tax/i.test(t) && PAYS.test(t)) return { note: 'withholding tax' };
         return null;
@@ -266,9 +267,9 @@ export const PACK = [
     why: 'As written, if the project ends early, {note}, so I could do weeks of work and not be paid for it.',
     find(text, segs) {
       return each(segs, (t, prev) => {
-        if (!/\b(?:terminat\w+|cancel\w*|end\s+this\s+agreement|early\s+end)\b/i.test(`${prev} ${t}`)) return null;
+        if (!/\b(?:terminat\w+|cancel\w*|(?:end|close)\s+(?:this|the)\s+(?:agreement|contract)|early\s+end)\b/i.test(`${prev} ${t}`)) return null;
         if (/\b(?:pay|compensate)\s+(?:the\s+[a-z]+\s+)?only\s+for\s+(?:the\s+)?(?:[a-z-]+\s+){0,2}(?:deliverables|work|services|milestones)[^.;]{0,60}?\b(?:accepted|approved|delivered\s+and\s+accepted|completed\s+and\s+accepted)\b/i.test(t)) return { note: 'only accepted work is paid' };
-        if (/\bno\s+(?:further\s+)?(?:payments?|compensation|fees?|amounts?)\s+(?:shall\s+be|will\s+be|is|are)\s+(?:due|payable|owed|owing)|\b(?:not|no\s+longer)\s+be\s+(?:entitled|liable)\s+(?:to|for)\s+(?:any\s+)?(?:further\s+)?(?:payments?|compensation|fees?)|\bshall\s+have\s+no\s+(?:further\s+)?(?:obligation|liability)\s+to\s+(?:pay|make\s+(?:any\s+)?payments?)|\bforfeit\w*\s+(?:any|all)\s+(?:unpaid\s+|outstanding\s+)?(?:fees?|payments?|compensation)|\bowes?\s+nothing\b|\bnothing\s+(?:is|will\s+be|shall\s+be)\s+(?:owed|payable|due)\b|\bwithout\s+(?:any\s+)?(?:further\s+)?(?:payment|compensation)\s+(?:to|of)\s+(?:the\s+)?(?:contractor|consultant|freelancer|developer|designer)/i.test(t)) return { note: 'nothing is owed for work in progress' };
+        if (/\bno\s+(?:further\s+)?(?:payments?|compensation|fees?|amounts?)\s+(?:shall\s+be|will\s+be|is|are)\s+(?:due|payable|owed|owing)|\b(?:not|no\s+longer)\s+be\s+(?:entitled|liable)\s+(?:to|for)\s+(?:any\s+)?(?:further\s+)?(?:payments?|compensation|fees?)|\bshall\s+have\s+no\s+(?:further\s+)?(?:obligation|liability)\s+to\s+(?:pay|make\s+(?:any\s+)?payments?)|\bforfeit\w*\s+(?:any|all)\s+(?:unpaid\s+|outstanding\s+)?(?:fees?|payments?|compensation)|\bowes?\s+nothing\b|\b(?:milestones?|work|deliverables?|invoices?)\b[^.;]{0,60}\b(?:will|shall)\s+not\s+be\s+paid\b|\bnothing\s+(?:is|will\s+be|shall\s+be)\s+(?:owed|payable|due)\b|\bwithout\s+(?:any\s+)?(?:further\s+)?(?:payment|compensation)\s+(?:to|of)\s+(?:the\s+)?(?:contractor|consultant|freelancer|developer|designer)/i.test(t)) return { note: 'nothing is owed for work in progress' };
         return null;
       });
     },
