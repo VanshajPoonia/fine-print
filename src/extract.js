@@ -1,8 +1,6 @@
 // PDF, DOCX or plain text -> one string, all in the browser. The two parsers are loaded
 // only when a file of that type is dropped in.
 
-import { grey } from './ocr.js';
-
 const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
 const PDFJS_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
 const MAMMOTH = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
@@ -32,13 +30,7 @@ async function pdfText(buf) {
   return { text: pages.join('\n\n'), pages: pages.length, pageTexts: pages, scanned: scannedPages(pages) };
 }
 
-// Pictures of pages as grey pixels, at about 200 dpi, which is what scripts/ocr.mjs measured.
-const canvasPixels = (canvas) => {
-  const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-  return { g: grey(data, canvas.width, canvas.height), w: canvas.width, h: canvas.height };
-};
-
-/** Renders the given PDF pages (numbered from 1) for reading. */
+/** Draws the given PDF pages (numbered from 1) at 200 dpi, the resolution scripts/ocr.mjs measured. */
 export async function* pdfPages(buf, numbers) {
   const pdfjs = await import(PDFJS);
   pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
@@ -53,7 +45,7 @@ export async function* pdfPages(buf, numbers) {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport }).promise;
-    yield { n, ...canvasPixels(canvas) };
+    yield { n, canvas };
   }
 }
 
@@ -68,7 +60,7 @@ export async function imagePage(src, n) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  return { n, ...canvasPixels(canvas) };
+  return { n, canvas };
 }
 
 function loadScript(src) {

@@ -2,13 +2,11 @@
 // WASM otherwise. Same q4 weights either way, which are the weights tests/eval.mjs measured.
 import * as tf from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1/dist/transformers.min.js';
 import { embedder, MODELS } from './embed.js';
-import { reader, READER } from './ocr.js';
 
 tf.env.allowLocalModels = false;
 tf.env.useBrowserCache = true;
 
 export const SIZE_MB = MODELS.gemma.mb;
-export const READER_MB = READER.mb;
 
 let embed = null;
 let loading = null;
@@ -46,19 +44,4 @@ export function load(onProgress) {
     throw lastErr;
   })().catch((err) => { loading = null; throw err; });
   return loading;
-}
-
-// The text reader for scanned pages: TrOCR, downloaded only when someone asks for it.
-let reading = null;
-export function loadReader(onProgress) {
-  const files = new Map();
-  const progress_callback = (e) => {
-    if (e.status !== 'progress' || !e.total) return;
-    files.set(e.file, [e.loaded, e.total]);
-    let l = 0, t = 0;
-    for (const [a, b] of files.values()) { l += a; t += b; }
-    onProgress?.(l / t);
-  };
-  reading ??= reader(tf, { device: 'wasm', progress_callback }).catch((err) => { reading = null; throw err; });
-  return reading;
 }

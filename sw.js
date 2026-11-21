@@ -1,7 +1,7 @@
 // Offline support. Once the model is cached (transformers.js keeps it in Cache Storage),
 // ClauseGuard works with no connection at all, which is also the simplest proof that the
 // contract never goes anywhere.
-const SHELL = 'fp-shell-v4';
+const SHELL = 'fp-shell-v5';
 const RUNTIME = 'fp-runtime-v1';
 const FILES = [
   './', 'index.html', 'assets/styles.css', 'assets/icon.svg', 'manifest.webmanifest',

@@ -1,15 +1,15 @@
-// OCR on the scanned test pages from scripts/scans.mjs, through transformers.js.
+// OCR on the scanned test pages from scripts/scans.mjs.
 //
 //   node scripts/scans.mjs                    make the pages (once)
-//   node scripts/ocr.mjs run <engine>         read them: florence, trocr or docling
+//   node scripts/ocr.mjs run <engine>         read them: tesseract, florence or docling
 //   node scripts/ocr.mjs score <engine>       score tests/.cache/scans/ocr-<engine>.json
-//   PAGES=freelance-.*-1 node scripts/ocr.mjs run trocr     only pages matching a pattern (score too)
+//   PAGES=freelance-.*-1 node scripts/ocr.mjs run florence  only pages matching a pattern (score too)
 //
 // Engines:
-//   florence  Florence-2-base-ft, "<OCR>" on the whole page (int8, 265 MB)
-//   trocr     TrOCR-small-printed (q8, 64 MB), one text line at a time: the page is deskewed
-//             and cut into lines and word groups first (src/ocr.js, what the app runs)
-//   docling   granite-docling-258M, the whole page in tiles (about 260 MB)
+//   tesseract  Tesseract through tesseract.js and src/ocr.js, what the app runs (about 7 MB)
+//   florence   Florence-2-base-ft, "<OCR>" on the whole page, through transformers.js (265 MB)
+//   docling    granite-docling-258M, the whole page in tiles, through transformers.js (260 MB)
+// TrOCR, line by line, was measured here too and replaced by Tesseract (see the README).
 //
 // Scoring, per kind of scan:
 //   CER     character error rate against each page's true text (edits / characters), also
@@ -19,13 +19,13 @@
 // Any other engine's output can be scored the same way if it is saved in that file's shape:
 // { "<page>.jpg": { "text": "...", "secs": 1.2 } }.
 
-import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as tf from '@huggingface/transformers';
 import { segment } from '../src/segment.js';
 import { embedder } from '../src/embed.js';
 import { hitsFor, withRules } from '../src/scan.js';
-import { readPage, reader } from '../src/ocr.js';
+import { reader, TESSERACT } from '../src/ocr.js';
 
 const DIR = new URL('../tests/.cache/scans/', import.meta.url);
 const [cmd, engine] = process.argv.slice(2);
@@ -34,7 +34,6 @@ const outFile = new URL(`ocr-${engine}.json`, DIR);
 // ---------- reading pages ----------------------------------------------------------------
 
 async function engineFor(name) {
-  const sharp = (await import('sharp')).default;
   if (name === 'florence') {
     const id = 'onnx-community/Florence-2-base-ft';
     const model = await tf.Florence2ForConditionalGeneration.from_pretrained(id, { dtype: { embed_tokens: 'int8', vision_encoder: 'int8', encoder_model: 'int8', decoder_model_merged: 'int8' } });
@@ -46,12 +45,12 @@ async function engineFor(name) {
       return processor.post_process_generation(processor.batch_decode(ids, { skip_special_tokens: false })[0], '<OCR>', img.size)['<OCR>'];
     };
   }
-  if (name === 'trocr') {
-    const recognise = await reader(tf);
-    return async (file) => {
-      const { data, info } = await sharp(file).greyscale().raw().toBuffer({ resolveWithObject: true });
-      return readPage({ g: new Uint8Array(data), w: info.width, h: info.height }, recognise);
-    };
+  if (name === 'tesseract') {
+    // tesseract.js keeps the English model here, but only if the folder already exists.
+    const cachePath = fileURLToPath(new URL('../tests/.cache/tesseract/', import.meta.url));
+    mkdirSync(cachePath, { recursive: true });
+    const { read } = await reader((await import('tesseract.js')).default, { langPath: TESSERACT.langPath, cachePath });
+    return (file) => read(file);
   }
   if (name === 'docling') {
     const id = 'onnx-community/granite-docling-258M-ONNX';
@@ -86,7 +85,7 @@ if (cmd === 'run') {
 // ---------- scoring --------------------------------------------------------------------
 
 if (cmd !== 'score' || !existsSync(outFile)) {
-  console.log('usage: node scripts/ocr.mjs run <florence|trocr|docling>, then node scripts/ocr.mjs score <engine>');
+  console.log('usage: node scripts/ocr.mjs run <tesseract|florence|docling>, then node scripts/ocr.mjs score <engine>');
   process.exit(1);
 }
 const truth = JSON.parse(readFileSync(new URL('truth.json', DIR)));

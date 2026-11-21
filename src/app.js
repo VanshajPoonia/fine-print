@@ -4,7 +4,7 @@ import { PACK_BY_ID } from './crossborder.js';
 import { scan, withRules } from './scan.js';
 import { matches } from './segment.js';
 import { fileToText, pdfPages, imagePage } from './extract.js';
-import { readPage } from './ocr.js';
+import { loadReader, TESSERACT } from './ocr.js';
 import { parties, fill, sectionAt, counterProposal, combinedEmail } from './letters.js';
 import * as model from './model.js';
 
@@ -72,7 +72,7 @@ $('#file').addEventListener('change', (e) => { if (e.target.files[0]) readFile(e
 // Pictures of pages have no text to read. ClauseGuard's own reader can try, and the only other
 // ways it suggests run on the device too.
 const SCAN_HELP = 'If you have the original document, use that. Or copy the text with your device\'s own text recognition, such as Live Text in Preview on a Mac or in Photos on an iPhone, and paste it here.';
-const READER_NOTE = `ClauseGuard's text reader can try, on this device: it is in beta, downloads ${model.READER_MB} MB once, reads clean scans well and phone photos badly.`;
+const READER_NOTE = `ClauseGuard can read them on this device with Tesseract, a text reader that downloads about ${TESSERACT.mb} MB once.`;
 
 let scans = null; // pages waiting to be read: { file, pageTexts, numbers } or { images }
 
@@ -124,7 +124,7 @@ $('#ocr').addEventListener('click', async () => {
   bar.hidden = false;
   bar.value = 0;
   try {
-    const recognise = await model.loadReader((p) => { bar.value = p; $('#status').textContent = `Downloading the text reader… ${Math.round(p * 100)}%`; });
+    const { read } = await loadReader((p) => { bar.value = p; $('#status').textContent = `Loading the text reader… ${Math.round(p * 100)}%`; });
     const texts = [...(job.pageTexts ?? [])];
     const total = job.images?.length ?? job.numbers.length;
     const pages = job.images ? pictures(job.images) : pdfPages(await job.file.arrayBuffer(), job.numbers);
@@ -132,11 +132,11 @@ $('#ocr').addEventListener('click', async () => {
     for await (const page of pages) {
       const before = k++;
       $('#status').textContent = `Reading scanned page ${k} of ${total} on this device…`;
-      texts[page.n - 1] = await readPage(page, recognise, (p) => { bar.value = (before + p) / total; });
+      texts[page.n - 1] = await read(page.canvas, (p) => { bar.value = (before + p) / total; });
     }
     scans = null;
     setText(texts.join('\n\n'));
-    fromNote = `${fromNote}Read ${total} scanned page${total > 1 ? 's' : ''} with the beta reader, which can misread words: check the text. `;
+    fromNote = `${fromNote}Read ${total} scanned page${total > 1 ? 's' : ''} on this device. A scan can still be misread, so check the text. `;
     run();
   } catch (err) {
     console.error(err);

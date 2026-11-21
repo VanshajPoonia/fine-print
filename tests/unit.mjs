@@ -7,7 +7,7 @@ import { RULES, RULES_BY_ID } from '../src/rules.js';
 import { PACK } from '../src/crossborder.js';
 import { ruleHits, supersede, rulesFor, withRules } from '../src/scan.js';
 import { scannedPages } from '../src/extract.js';
-import { otsu, skew, rotate, pieces, tidy, readPage } from '../src/ocr.js';
+import { TESSERACT, reader, joinLines } from '../src/ocr.js';
 import { parties, fill, quote, sectionAt, counterProposal, combinedEmail, DISCLAIMER } from '../src/letters.js';
 
 let failed = 0;
@@ -75,28 +75,29 @@ check('PDF pages with no text are picked out as scanned', JSON.stringify(scanned
 // --- reading scanned pages -------------------------------------------------------------
 
 {
-  // A white page with dark blocks standing in for words: two lines of text.
-  const w = 600, h = 120, g = new Uint8Array(w * h).fill(250);
-  const ink = (x0, x1, y0, y1) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) g[y * w + x] = 20; };
-  ink(20, 80, 20, 40); ink(100, 160, 20, 40); ink(400, 460, 20, 40); ink(20, 90, 70, 90);
-  const t = otsu(g);
-  const lines = pieces(g, w, h, t);
-  check('a page is cut into its lines of text', lines.length === 2, JSON.stringify(lines));
-  check('words close together are read as one piece, far apart as two', lines[0].length === 2 && lines[0][0].x1 >= 160 && lines[1].length === 1, JSON.stringify(lines[0]));
-  const text = await readPage({ g, w, h }, async () => 'WORD');
-  check('a page is read piece by piece and turned back into sentence case', text === 'Word word\nWord', JSON.stringify(text));
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
+  const core = JSON.parse(readFileSync(new URL('../node_modules/tesseract.js-core/package.json', import.meta.url)));
+  const urls = [TESSERACT.module, TESSERACT.workerPath, TESSERACT.corePath, TESSERACT.langPath];
+  check('Tesseract\'s files all come from jsDelivr at exact versions', urls.every((u) => /^https:\/\/cdn\.jsdelivr\.net\/npm\/(?:@[\w.-]+\/)?[\w.-]+@\d+\.\d+\.\d+(?:\/|$)/.test(u)), urls.join(' '));
+  check('and the same versions the tests run in Node', urls[0].includes(`tesseract.js@${pkg.devDependencies['tesseract.js']}/`) && urls[2].endsWith(`tesseract.js-core@${core.version}`), `${pkg.devDependencies['tesseract.js']} ${core.version}`);
 }
 {
-  // Lines of ink tilted by one degree.
-  const w = 800, h = 400, g = new Uint8Array(w * h).fill(250), tan = Math.tan(Math.PI / 180);
-  for (let y0 = 40; y0 < 360; y0 += 40) for (let x = 20; x < 780; x++) for (let d = 0; d < 6; d++) g[Math.round(y0 + d + x * tan) * w + x] = 20;
-  const a = (skew(g, w, h, otsu(g)) * 180) / Math.PI;
-  check('a tilted page is measured to within a fifth of a degree', Math.abs(a - 1) < 0.2, a.toFixed(2));
-  const level = rotate(g, w, h, skew(g, w, h, otsu(g)));
-  const after = (skew(level, w, h, otsu(level)) * 180) / Math.PI;
-  check('and turning it by that much makes it level', Math.abs(after) < 0.2, after.toFixed(2));
+  const seen = [];
+  const fake = {
+    async createWorker(lang, oem, opts) {
+      opts.logger({ status: 'loading language traineddata', progress: 0.5 });
+      return {
+        recognize: async () => { opts.logger({ status: 'recognizing text', progress: 1 }); return { data: { text: 'one\n\ntwo' } }; },
+        terminate: async () => {},
+      };
+    },
+  };
+  const r = await reader(fake, {}, (p) => seen.push(`load ${p}`));
+  const text = await r.read('page', (p) => seen.push(`read ${p}`));
+  check('the reader reports loading and reading progress separately', seen.join() === 'load 0.5,read 1', seen.join());
+  check('and joins a sentence that runs on across a blank line', text === 'one\ntwo', JSON.stringify(text));
 }
-check('capital letters from the reader become sentences again', tidy('INDEPENDENT CONTRACTOR AGREEMENT\n1.1 THE CONTRACTOR WILL PAY. IT IS DUE') === 'Independent contractor agreement\n1.1 The contractor will pay. It is due');
+check('a new paragraph after a full stop stays a new paragraph', joinLines('It ends here.\n\nNext one starts.') === 'It ends here.\n\nNext one starts.' && joinLines('shall not provide\n\nsoftware services') === 'shall not provide\nsoftware services');
 
 // --- cross-border pack ----------------------------------------------------------------
 

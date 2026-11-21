@@ -8,11 +8,12 @@
     "start": "python3 -m http.server 8000",
     "train": "node scripts/train.mjs",
     "sample": "node scripts/sample.mjs",
-    "test": "node tests/unit.mjs && node tests/crossborder.mjs && node tests/eval.mjs",
+    "test": "node tests/unit.mjs && node tests/crossborder.mjs && node tests/ocr.mjs && node tests/eval.mjs",
     "extension": "node scripts/extension.mjs"
   },
   "devDependencies": {
-    "@huggingface/transformers": "4.3.1"
+    "@huggingface/transformers": "4.3.1",
+    "tesseract.js": "5.1.1"
   },
   "license": "MIT"
 }
