@@ -16,6 +16,8 @@
 //           ignoring case, since some models only write capital letters
 //   flags   of the flags ClauseGuard raises on the true text, how many it still raises on
 //           the OCR text, and how many new ones appear. Rules and the trained heads both count.
+//   titles  of the rule cards' titles on the true text, with their details, how many come out
+//           word for word the same from the OCR text
 // Any other engine's output can be scored the same way if it is saved in that file's shape:
 // { "<page>.jpg": { "text": "...", "secs": 1.2 } }.
 
@@ -26,6 +28,7 @@ import { segment } from '../src/segment.js';
 import { embedder } from '../src/embed.js';
 import { hitsFor, withRules } from '../src/scan.js';
 import { reader, TESSERACT } from '../src/ocr.js';
+import { cardTitles } from '../tests/cards.mjs';
 
 const DIR = new URL('../tests/.cache/scans/', import.meta.url);
 const [cmd, engine] = process.argv.slice(2);
@@ -114,7 +117,7 @@ async function flags(text) {
 }
 
 for (const kind of ['scan', 'photo']) {
-  let errs = 0, errsCase = 0, chars = 0, secs = 0, pages = 0, kept = 0, wanted = 0, extra = 0;
+  let errs = 0, errsCase = 0, chars = 0, secs = 0, pages = 0, kept = 0, wanted = 0, extra = 0, titles = 0, same = 0;
   for (const [doc, truePages] of Object.entries(truth)) {
     const read = [];
     truePages.forEach((t, i) => {
@@ -134,9 +137,11 @@ for (const kind of ['scan', 'photo']) {
     wanted += want.size;
     kept += [...want].filter((f) => got.has(f)).length;
     extra += [...got].filter((f) => !want.has(f)).length;
+    const read2 = new Set(cardTitles(read.join('\n')));
+    for (const t of cardTitles(truePages.join('\n'))) { titles++; if (read2.has(t)) same++; }
   }
   if (!pages) continue;
-  const fl = wanted ? `flags kept ${kept}/${wanted}, new ${extra}` : 'flags: needs every page of a contract';
+  const fl = wanted ? `flags kept ${kept}/${wanted}, new ${extra}, card titles same ${same}/${titles}` : 'flags: needs every page of a contract';
   const pc = (n) => `${((100 * n) / chars).toFixed(1).padStart(5)}%`;
   console.log(`${engine.padEnd(9)} ${kind.padEnd(5)} ${String(pages).padStart(2)} pages   CER ${pc(errs)} (ignoring case ${pc(errsCase)})   ${(secs / pages).toFixed(0).padStart(4)} s a page   ${fl}`);
 }

@@ -146,6 +146,8 @@ ClauseGuard reads PDFs with pdf.js, which only gets the text stored in the file.
 | Florence-2-base-ft, whole page | 265 MB | 40.7% | 41.0% | 9 of 31 | 5 of 31 | 16 |
 | granite-docling-258M, 4-bit and 8-bit | 260 MB | repeats one phrase | nothing | - | - | 25 to 237 |
 
+On the same pages, all 17 cards from the rules keep their titles word for word, details included, on scans and on photos (`node scripts/ocr.mjs score tesseract`). Before a fix to how wrapped lines are joined, a scan or a text PDF could drop a detail such as "anywhere in the world" from a non-compete card. `tests/unit.mjs` and `tests/ocr.mjs` now check that wrapped and read text give the same card titles as the clean text.
+
 Errors are edits needed per character of true text. Seconds are per page in Node, not a browser. Tesseract's were timed on a quiet Mac, the others while other jobs loaded it. TrOCR was the first reader shipped, through transformers.js, before Tesseract was approved as a new library. It was measured at commit `757f2ec` and then removed. `tests/ocr.mjs`, part of `npm test`, draws four double-spaced contract lines, reads them with Tesseract through `src/ocr.js` and checks the words and the flags. These are typeset pages made to look scanned, not real scans of signed paper, which will be harder.
 
 ## Browser extension
