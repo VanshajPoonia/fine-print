@@ -10,6 +10,7 @@ import { scannedPages } from '../src/extract.js';
 import { TESSERACT, reader, joinLines } from '../src/ocr.js';
 import { parties, fill, quote, sectionAt, onFee, counterProposal, combinedEmail, DISCLAIMER } from '../src/letters.js';
 import { amounts, format, contractFee } from '../src/money.js';
+import { cardTitles, wrap } from './cards.mjs';
 
 let failed = 0;
 const check = (name, ok, detail = '') => {
@@ -99,6 +100,22 @@ check('PDF pages with no text are picked out as scanned', JSON.stringify(scanned
   check('and joins a sentence that runs on across a blank line', text === 'one\ntwo', JSON.stringify(text));
 }
 check('a new paragraph after a full stop stays a new paragraph', joinLines('It ends here.\n\nNext one starts.') === 'It ends here.\n\nNext one starts.' && joinLines('shall not provide\n\nsoftware services') === 'shall not provide\nsoftware services');
+
+{
+  // A PDF's text layer keeps the printed line breaks. A wrapped line of plain words used to
+  // look like a heading in capitals and cut its sentence, losing a card's details.
+  for (const f of ['../data/samples/crossborder.txt', '../data/samples/freelance.txt', './fixtures/fair.txt']) {
+    const t = readFileSync(new URL(f, import.meta.url), 'utf8');
+    const a = cardTitles(t), b = cardTitles(wrap(t));
+    check(`hard-wrapped lines give the same cards, details included (${f.split('/').pop()})`, JSON.stringify(a) === JSON.stringify(b), `${a.join(' | ')}\n      wrapped: ${b.join(' | ')}`);
+  }
+  const t = 'the Developer\nshall not provide software development services to any business';
+  const h = segment('The parties agree to the terms and conditions set out below\nGOVERNING LAW\nThis Agreement is governed by the laws of India.');
+  const n1 = segment('The parties agree to the terms and conditions set out in the schedule below\n4.1 The Contractor will design the website and the mobile app for the Client.');
+  const n2 = segment('The Client will pay each invoice sent by the Contractor within\n30 days of the invoice date, by wire transfer to the account below.');
+  check('a clause number starts a new clause, but a wrapped line starting "30 days" does not', n1.length === 2 && n1[1].text.startsWith('4.1 The') && n2.length === 1, JSON.stringify([n1.map((x) => x.text), n2.map((x) => x.text)]));
+  check('a wrapped line of plain words is not taken for a heading, but one in capitals still is', segment(t).length === 1 && h.length === 2 && h[1].text.startsWith('GOVERNING LAW This Agreement'), JSON.stringify(h.map((x) => x.text)));
+}
 
 // --- cross-border pack ----------------------------------------------------------------
 

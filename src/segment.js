@@ -23,7 +23,15 @@ const ABBREV = new Set([
 const NUMBERING = /^(?:\(?[0-9]+(?:\.[0-9]+)*\)?|\(?[a-z]\)?|\(?[ivxlc]+\)?|[A-Z])$/i;
 
 // Where a new clause starts after a newline.
-const LINE_START = /^[ \t]*(?:\(?[0-9]+(?:\.[0-9]+)*[.)]?\s|\([a-z]{1,4}\)\s|[•\-*]\s|(?:section|article|clause|schedule|exhibit)\s+[0-9a-z]+\b|[A-Z][A-Z ,&'-]{4,}$)/i;
+const LINE_START = /^[ \t]*(?:\([a-z]{1,4}\)\s|[•\-*]\s|(?:section|article|clause|schedule|exhibit)\s+[0-9a-z]+\b)/i;
+
+// A clause number, as in "4.1 The". Followed by a lower-case word, as in a wrapped
+// "...within\n30 days of the invoice", it is the middle of a sentence instead.
+const NUMBERED = /^[ \t]*\(?[0-9]+(?:\.[0-9]+)*[.)]?\s+(?![a-z])/;
+
+// A heading in capitals, such as "GOVERNING LAW". Case matters, or a wrapped line of
+// ordinary words would look like one and cut its sentence in two.
+const HEADING = /^[ \t]*[A-Z][A-Z ,&'-]{4,}$/;
 
 // Where a new clause starts mid-line: "... last clause. 12.3 Next clause" / "... Section 4 ...".
 const INLINE_SECTION = /\s(?=(?:[0-9]{1,2}(?:\.[0-9]{1,2})+\.?|[0-9]{1,2}\.)\s+[A-Z(])/g;
@@ -38,7 +46,7 @@ function cuts(text) {
     const before = text.slice(Math.max(0, i - 200), i).trimEnd();
     const nextLine = text.slice(i + 1, text.indexOf('\n', i + 1) === -1 ? undefined : text.indexOf('\n', i + 1));
     const blank = /^\s*$/.test(nextLine);
-    if (blank || /[.;:?!]["')\]]*$/.test(before) || LINE_START.test(nextLine)) at.add(i + 1);
+    if (blank || /[.;:?!]["')\]]*$/.test(before) || LINE_START.test(nextLine) || NUMBERED.test(nextLine) || HEADING.test(nextLine)) at.add(i + 1);
   }
 
   // Sentence ends.
