@@ -133,38 +133,34 @@ Brackets like `[30]` mark numbers to choose. Every draft starts with a line sayi
 
 ## Scanned PDFs
 
-ClauseGuard reads PDFs with pdf.js, which only gets the text stored in the file. A scan is a picture of each page with no text inside. ClauseGuard now spots those pages and names them, where before they were dropped without a word, and points to text recognition that also runs on your device, such as Live Text.
+ClauseGuard reads PDFs with pdf.js, which only gets the text stored in the file. A scan is a picture of each page with no text inside. ClauseGuard spots those pages, names them, and offers to read them on the device with **Tesseract**, through tesseract.js 5.1.1. pdf.js draws each scanned page in the tab and Tesseract reads it in a worker there. The first time, it downloads about 7 MB from jsDelivr, pinned to exact versions like pdf.js: the library, its worker, its WebAssembly core and the English model. Nothing is uploaded. `src/ocr.js` also joins sentences that double spacing splits into separate paragraphs.
 
-It can also try to read them itself, on the device, with a **beta text reader**: TrOCR-small-printed (64 MB) through transformers.js, which ClauseGuard already uses. TrOCR reads one line at a time, so `src/ocr.js` first straightens the page and cuts it into lines and groups of words. TrOCR was trained on receipts and writes only capital letters, so the text is put back into sentence case afterwards. Nothing is uploaded: pdf.js draws the page in the tab and the model reads it there.
-
-`node scripts/scans.mjs` typesets four contracts whose text is known (the two samples, the fair contract and the start of the CUAD sample) into 11 pages, and makes two scanned-looking copies of each: a flatbed scan (200 dpi, tilted 0.4 degrees, slightly blurred) and a phone photo (150 dpi, tilted 1.2 degrees, with grain, uneven light and heavy JPEG). `node scripts/ocr.mjs` reads them, counts character errors against the true text, and checks whether ClauseGuard raises the same flags on the read text as on the true text, model and rules together.
+`node scripts/scans.mjs` typesets four contracts whose text is known (the two samples, the fair contract and the start of the CUAD sample) into 11 pages, and makes two scanned-looking copies of each: a flatbed scan (200 dpi, tilted 0.4 degrees, slightly blurred) and a phone photo (150 dpi, tilted 1.2 degrees, with grain, uneven light and heavy JPEG). `node scripts/ocr.mjs run tesseract` reads them through `src/ocr.js`, the code the app runs, and `node scripts/ocr.mjs score tesseract` counts character errors against the true text and checks whether ClauseGuard raises the same flags on the read text as on the true text, model and rules together.
 
 | Reader | Download | Errors, scan | Errors, photo | Flags kept, scan | Flags kept, photo | Seconds a page |
 |---|---|---|---|---|---|---|
-| **TrOCR-small-printed, line by line (in ClauseGuard, beta)** | 64 MB | 4.8% (1.0% ignoring case) | 5.3% (1.4% ignoring case) | 28 of 31, 2 new | 27 of 31, 4 new | 16 to 18 |
+| **Tesseract 5, tesseract.js 5.1.1 (in ClauseGuard)** | 7 MB | 0.4% | 0.6% | 31 of 31, none new | 31 of 31, none new | 1.3 |
+| TrOCR-small-printed, line by line (replaced) | 64 MB | 4.8% (1.0% ignoring case) | 5.3% (1.4% ignoring case) | 28 of 31, 2 new | 27 of 31, 4 new | 16 to 18 |
 | Florence-2-base-ft, whole page | 265 MB | 40.7% | 41.0% | 9 of 31 | 5 of 31 | 16 |
 | granite-docling-258M, 4-bit and 8-bit | 260 MB | repeats one phrase | nothing | - | - | 25 to 237 |
-| Tesseract 5 (tesseract.js 5.1.1), for comparison only | 9 MB | 0.4% | 0.6% | 31 of 31 | 31 of 31 | 28 to 43 |
 
-Seconds are per page in Node on a Mac shared with other jobs, not in a browser, where it will be slower. Errors are edits needed per character of true text, and most of the beta reader's errors are capital letters it cannot know. Making this table found two bugs in the page straightening. It measured every page as level, and once that was fixed, it turned pages the wrong way, which dropped the flags kept on scans to 9 of 31 until it was fixed too.
-
-Tesseract reads these pages almost perfectly and raises no extra flags, from a smaller download. It is a new library, so it is not in ClauseGuard until it is approved. Until then the beta reader is what runs. These are typeset pages made to look scanned, not real scans of signed paper, which will be harder.
+Errors are edits needed per character of true text. Seconds are per page in Node, not a browser. Tesseract's were timed on a quiet Mac, the others while other jobs loaded it. TrOCR was the first reader shipped, through transformers.js, before Tesseract was approved as a new library. It was measured at commit `757f2ec` and then removed. `tests/ocr.mjs`, part of `npm test`, draws four double-spaced contract lines, reads them with Tesseract through `src/ocr.js` and checks the words and the flags. These are typeset pages made to look scanned, not real scans of signed paper, which will be harder.
 
 ## Browser extension
 
 `extension/` is a Manifest V3 extension. It asks for `activeTab`, `scripting` and `storage` only, and does nothing until you click it. Then it reads the contract from the tab you are on and opens ClauseGuard in a new tab with it.
 
 - **Google Docs** draws its text on a canvas, so the page has no text to read. The extension asks Google Docs for the document's plain-text export instead: a same-origin request that redirects to a signed download link, which allows it. If that fails, it reads Docs' basic HTML view. This needs the right to download: if the owner turned off downloading and copying for viewers, it says so.
-- **DocuSign** shows most documents as one picture per page. The extension collects the page pictures the viewer has loaded, and ClauseGuard offers to read them with its beta text reader (see "Scanned PDFs" above), or tells you to use DocuSign's Download and drop the PDF in, which is more reliable. Pages DocuSign has not loaded yet are not there to collect, so scroll through first.
+- **DocuSign** shows most documents as one picture per page. The extension collects the page pictures the viewer has loaded, and ClauseGuard offers to read them with Tesseract (see "Scanned PDFs" above), or to use DocuSign's Download and drop the PDF in. Pages DocuSign has not loaded yet are not there to collect, so scroll through first.
 - **Any other page**: the text you selected, or the page's visible text.
 
-The contract waits in `chrome.storage.session`, which is memory only, never synced and cleared when Chrome closes. A content script that runs only on ClauseGuard's own page passes it in through a message inside that tab. `npm run extension` builds the zip for the Chrome Web Store, and `privacy.html` is the privacy page the listing needs.
+The extension itself never reads pictures: it hands them to the ClauseGuard page, which runs Tesseract. So the extension package holds no remote code and its default security policy is all it needs. The contract waits in `chrome.storage.session`, which is memory only, never synced and cleared when Chrome closes. A content script that runs only on ClauseGuard's own page passes it in through a message inside that tab. `npm run extension` builds the zip for the Chrome Web Store, and `privacy.html` is the privacy page the listing needs.
 
 What has been tested: the manifest, permissions, the Docs URL and page-picture helpers, how the popup picks between frames, and that the service worker hands a contract only to ClauseGuard's page, all in `tests/unit.mjs`. That the Docs export allows the redirect was checked with curl on a public document. It has not yet been run in Chrome against a private Google Doc or a real DocuSign envelope.
 
 ## Limits
 
-- Scanned PDFs are read by a beta reader that misreads some words and writes everything in lower case except the start of each sentence. The original document is always better. See "Scanned PDFs" above.
+- Scanned PDFs are read with Tesseract, measured on typeset pages made to look scanned. A real scan of a signed, stamped or handwritten page will be read less well. The original document is always better.
 - English only. CUAD is US commercial contracts; a freelance contract under another country's law may phrase things differently.
 - The cross-border checks are patterns. They read the phrasings in the fixtures and the CUAD sample, and will miss others. They do not know which country's law applies to your contract.
 - It points at clauses. It does not know your situation, and it can miss things. **Not legal advice.**
@@ -174,13 +170,13 @@ What has been tested: the manifest, permissions, the Docs URL and page-picture h
 ```bash
 npm start           # static server on :8000, no build step
 npm install         # only for the scripts and tests
-npm test            # unit checks, the cross-border checks, then the evaluation on CUAD's test set (downloads CUAD, 18 MB)
+npm test            # unit checks, cross-border checks, OCR check, then the evaluation on CUAD's test set (downloads CUAD, 18 MB)
 npm run train       # re-train data/heads.json (the test does this too, and checks it matches)
 MODEL=bge npm test  # the same with bge-small
 npm run extension   # the browser extension's zip for the Chrome Web Store, in dist/
 node scripts/audit-rules.mjs        # a random sample of each cross-border check's flags on CUAD, to read
 node scripts/scans.mjs              # scanned-looking test pages from contracts whose text is known
-node scripts/ocr.mjs run trocr      # OCR them through transformers.js, then: node scripts/ocr.mjs score trocr
+node scripts/ocr.mjs run tesseract  # read them as the app does, then: node scripts/ocr.mjs score tesseract
 ```
 
 To try the extension unpacked: open `chrome://extensions`, turn on Developer mode, choose Load unpacked and pick the `extension` folder.
@@ -197,6 +193,7 @@ src/flags.js       the 14 flags: which CUAD categories, what it means, what to a
 src/rules.js       the 3 pattern checks
 src/crossborder.js the 9 cross-border checks
 src/letters.js     counter-proposal emails from templates
+src/ocr.js         reading scanned pages with Tesseract
 src/extract.js     PDF and DOCX to text, in the browser, and which PDF pages are scanned
 src/model.js       EmbeddingGemma in the browser (WebGPU, or WASM with the fallback build)
 src/app.js         UI
@@ -210,6 +207,7 @@ scripts/scans.mjs  makes scanned-looking test pages; scripts/ocr.mjs reads and s
 scripts/extension.mjs  builds the extension's store zip
 tests/unit.mjs     segmenter, rules, emails and extension, no model
 tests/crossborder.mjs  the cross-border checks on fixtures, whole contracts and CUAD
+tests/ocr.mjs      reads drawn contract lines with Tesseract, as the app does
 tests/fixtures/    clauses and a fair contract written for those checks
 tests/eval.mjs     the evaluation
 extension/         the browser extension (Manifest V3)
@@ -220,6 +218,6 @@ data/samples/      two contracts written for the demo (one cross-border), and on
 
 ## Credits
 
-[CUAD](https://www.atticusprojectai.org/cuad) by The Atticus Project, CC BY 4.0. [EmbeddingGemma](https://huggingface.co/google/embeddinggemma-300m) by Google, under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms), via the [ONNX build](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX). [bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) by BAAI (MIT), for comparison. Runtime: [transformers.js](https://github.com/huggingface/transformers.js). PDF: pdf.js (Apache-2.0). DOCX: mammoth (BSD-2-Clause).
+[CUAD](https://www.atticusprojectai.org/cuad) by The Atticus Project, CC BY 4.0. [EmbeddingGemma](https://huggingface.co/google/embeddinggemma-300m) by Google, under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms), via the [ONNX build](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX). [bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) by BAAI (MIT), for comparison. Runtime: [transformers.js](https://github.com/huggingface/transformers.js). PDF: pdf.js (Apache-2.0). DOCX: mammoth (BSD-2-Clause). Scanned pages: [tesseract.js](https://github.com/naptha/tesseract.js) and Tesseract (Apache-2.0).
 
 Code: MIT licence.
